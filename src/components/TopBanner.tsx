@@ -33,7 +33,7 @@ export default function TopBanner() {
     const fetchUserRole = async () => {
       if (session && user) {
         const { data, error } = await supabase
-          .from('users')
+          .from('profiles')
           .select('role')
           .eq('id', user.id)
           .single();
@@ -56,8 +56,13 @@ export default function TopBanner() {
         <nav className="flex gap-6">
           <a href="#" className="hover:underline">À propos</a>
           <a href="#" className="hover:underline">Fonctionnalités</a>
-          <a href="#" className="hover:underline">Tarifs</a>
           <a href="#" className="hover:underline">Contact</a>
+          {session && (
+            <>
+              <a href="/abonnements" className="hover:underline font-semibold">🛒 Gérer</a>
+              <a href="/encours" className="hover:underline font-semibold">📦 En cours</a>
+            </>
+          )}
         </nav>
         {session && (
           <div className="flex items-center gap-2 ml-4 pl-4 border-l border-blue-700">

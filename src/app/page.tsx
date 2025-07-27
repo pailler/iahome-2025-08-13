@@ -21,6 +21,7 @@ export default function Home() {
   const [experienceFilter, setExperienceFilter] = useState('all');
   const [sortBy, setSortBy] = useState('most_used');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [userSubscriptions, setUserSubscriptions] = useState<{[key: string]: boolean}>({});
 
   // Vérification de la configuration Supabase
   useEffect(() => {
@@ -53,12 +54,43 @@ export default function Home() {
 
   // Effet pour surveiller les changements de session
   useEffect(() => {
-    console.log('Session changée:', { 
+    console.log('🔍 Session changée:', { 
       hasSession: !!session, 
       userEmail: user?.email,
       userId: user?.id 
     });
   }, [session, user]);
+
+  // Vérifier les abonnements actifs de l'utilisateur
+  useEffect(() => {
+    const checkUserSubscriptions = async () => {
+      if (!user?.id) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('user_subscriptions')
+          .select('module_name, end_date')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .gt('end_date', new Date().toISOString());
+        
+        if (!error && data) {
+          const subscriptions: {[key: string]: boolean} = {};
+          data.forEach(sub => {
+            subscriptions[sub.module_name] = true;
+          });
+          setUserSubscriptions(subscriptions);
+          console.log('✅ Abonnements actifs:', subscriptions);
+        }
+      } catch (error) {
+        console.error('Erreur vérification abonnements:', error);
+      }
+    };
+
+    if (user) {
+      checkUserSubscriptions();
+    }
+  }, [user]);
 
 
 
@@ -99,8 +131,8 @@ export default function Home() {
           // Ajouter des rôles et données aléatoires aux cartes pour l'affichage
           const cardsWithRoles = (data || []).map(card => ({
             ...card,
-            // Utiliser la catégorie de la base de données
-            category: card.category || 'Non classé',
+            // Nettoyer et utiliser la catégorie de la base de données
+            category: cleanCategory(card.category || 'Non classé'),
             // Ajouter des données aléatoires seulement pour l'affichage (pas stockées en DB)
             role: getRandomRole(),
             usage_count: Math.floor(Math.random() * 1000) + 1,
@@ -124,17 +156,35 @@ export default function Home() {
     const fetchUserRole = async () => {
       if (session && user) {
         console.log('Chargement du rôle pour:', user.email, 'ID:', user.id);
-        const { data, error } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', user.id)
-          .single();
         
-        if (error) {
-          console.error('Erreur lors du chargement du rôle:', error);
-        } else {
-          console.log('Rôle trouvé:', data.role);
-          setRole(data.role);
+        try {
+          // Essayer d'abord de récupérer depuis profiles
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+          
+          if (error) {
+            console.warn('Erreur lors du chargement du rôle depuis profiles:', error);
+            
+            // Fallback: essayer de récupérer depuis auth.users
+            const { data: authData, error: authError } = await supabase.auth.getUser();
+            if (authError) {
+              console.error('Erreur lors du chargement depuis auth:', authError);
+              setRole(null);
+            } else {
+              const userRole = authData.user?.user_metadata?.role || 'user';
+              console.log('Rôle récupéré depuis auth.users:', userRole);
+              setRole(userRole);
+            }
+          } else {
+            console.log('Rôle trouvé dans profiles:', data.role);
+            setRole(data.role);
+          }
+        } catch (err) {
+          console.error('Erreur inattendue lors du chargement du rôle:', err);
+          setRole(null);
         }
       } else {
         console.log('Pas de session ou utilisateur:', { session: !!session, user: !!user });
@@ -181,8 +231,87 @@ export default function Home() {
     return selectedCards.some(card => card.id === cardId);
   };
 
+  // Fonction pour convertir en majuscules
+  const toUpperCase = (str: string) => str.toUpperCase();
+
+  // Fonction pour nettoyer les catégories supprimées
+  const cleanCategory = (category: string) => {
+    return category.replace(/[^a-zA-Z0-9\s]/g, '').trim();
+  };
+
+  // Fonction pour obtenir l'URL d'accès d'un module
+  const getModuleAccessUrl = async (moduleName: string) => {
+    const moduleUrls: { [key: string]: string } = {
+      'IAmetube': 'https://metube.regispailler.fr',
+      'iatube': 'https://www.google.com', // Redirection vers Google pour iatube
+      // Ajouter d'autres modules ici quand ils seront disponibles
+      // 'IAphoto': 'https://iaphoto.regispailler.fr',
+      // 'IAvideo': 'https://iavideo.regispailler.fr',
+    };
+    
+    // Si c'est le module iatube, créer un magic link et rediriger
+    if (moduleName === 'iatube' && user?.id) {
+      try {
+        console.log('🔍 Création magic link pour iatube...');
+        console.log('🔍 User ID:', user.id);
+        console.log('🔍 User email:', user.email);
+        
+        // Créer un magic link pour iatube
+        const requestBody = {
+          userId: user.id,
+          subscriptionId: 'iatube-sub-789',
+          moduleName: 'iatube',
+          userEmail: user.email,
+          redirectUrl: 'https://www.google.com'
+        };
+        
+        console.log('🔍 Request body:', requestBody);
+        
+        const response = await fetch('/api/create-magic-link', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        console.log('🔍 Response status:', response.status);
+        
+        if (response.ok) {
+          const responseData = await response.json();
+          console.log('🔍 Response data:', responseData);
+          const token = responseData.data?.token || responseData.token;
+          console.log('🔍 Token extrait:', token);
+          // Rediriger vers la page d'accès avec le magic link
+          const accessUrl = `http://localhost:8021/access/test-module?token=${token}&user=${user.id}`;
+          console.log('🔍 Access URL:', accessUrl);
+          window.open(accessUrl, '_blank');
+          return null; // Pas de redirection directe
+        } else {
+          const errorData = await response.json();
+          console.error('❌ Erreur API:', errorData);
+        }
+      } catch (error) {
+        console.error('❌ Erreur lors de la création du magic link:', error);
+      }
+    }
+    
+    return moduleUrls[moduleName] || null;
+  };
+
   // Obtenir toutes les catégories uniques depuis les cartes
-  const categories = ['Toutes les catégories', ...Array.from(new Set(cards.map(card => card.category).filter(Boolean)))];
+  const existingCategories = Array.from(new Set(cards.map(card => card.category).filter(Boolean)));
+  
+  // Définir les catégories autorisées
+  const authorizedCategories = ['IA ASSISTANT', 'IA BUREAUTIQUE', 'IA PHOTO', 'IA VIDEO', 'IA MAO', 'IA PROMPTS', 'IA MARKETING', 'IA DESIGN'];
+  
+  // Filtrer les catégories existantes pour ne garder que les autorisées
+  const filteredExistingCategories = existingCategories.filter(cat => authorizedCategories.includes(cat));
+  
+  // Ajouter les catégories autorisées qui n'existent pas encore
+  const allCategories = [...filteredExistingCategories, ...authorizedCategories.filter(cat => !filteredExistingCategories.includes(cat))];
+  
+  const categories = ['Toutes les catégories', ...allCategories];
 
   // Filtrer et trier les cartes
   const filteredAndSortedCards = cards
@@ -291,9 +420,13 @@ export default function Home() {
       if (isAddingCard) {
         // Ajouter une nouvelle carte
         console.log('Ajout d\'une nouvelle carte...');
+        const cardDataWithUpperCase = {
+          ...cardData,
+          category: cardData.category.toUpperCase()
+        };
         const { data, error } = await supabase
           .from('cartes')
-          .insert([cardData])
+          .insert([cardDataWithUpperCase])
           .select();
         
         if (error) {
@@ -307,9 +440,13 @@ export default function Home() {
       } else {
         // Modifier une carte existante
         console.log('Modification de la carte ID:', editingCard.id);
+        const cardDataWithUpperCase = {
+          ...cardData,
+          category: cardData.category.toUpperCase()
+        };
         const { data, error } = await supabase
           .from('cartes')
-          .update(cardData)
+          .update(cardDataWithUpperCase)
           .eq('id', editingCard.id)
           .select();
         
@@ -368,13 +505,15 @@ export default function Home() {
               
                              {/* Menu de navigation */}
                <nav className="hidden md:flex items-center space-x-6">
-                 <a href="#" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">Produit</a>
                  <a href="#" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">Ressources</a>
                  <a href="#" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">Communauté</a>
                  <a href="#" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">Exemples</a>
-                 <a href="#" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">Tarifs</a>
-                 <a href="#" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">Entreprise</a>
                  <Link href="/blog" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">Blog</Link>
+                 {session && (
+                   <Link href="/encours" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
+                     📦 Mes Modules
+                   </Link>
+                 )}
                </nav>
             </div>
             
@@ -402,6 +541,7 @@ export default function Home() {
                   }`}>
                     {role === 'admin' ? 'ADMIN' : 'USER'}
                   </div>
+                  
                   <button 
                     className="text-gray-700 font-medium px-3 py-1 rounded hover:bg-gray-100 text-sm" 
                     onClick={async () => { 
@@ -492,7 +632,7 @@ export default function Home() {
                       }`}
                       onClick={() => setCategoryFilter(cat === 'Toutes les catégories' ? 'all' : cat)}
                     >
-                      {cat}
+                      {cat === 'Toutes les catégories' ? cat : toUpperCase(cleanCategory(cat))}
                     </button>
                   ))}
                 </div>
@@ -532,15 +672,63 @@ export default function Home() {
                   {/* Boutons */}
                   <div className="flex items-center gap-3">
                     {session && role === 'admin' && (
-                      <button 
-                        onClick={handleAddCard}
-                        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                        </svg>
-                        Ajouter
-                      </button>
+                      <>
+                        <button 
+                          onClick={handleAddCard}
+                          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                          </svg>
+                          Ajouter
+                        </button>
+                        
+                        {/* Bouton de test pour créer la carte iatube */}
+                        <button 
+                          onClick={async () => {
+                            try {
+                              const cardData = {
+                                title: 'iatube',
+                                description: 'Module de test pour redirection vers Google via magic link',
+                                category: 'IA VIDEO',
+                                price: 0,
+                                youtube_url: 'https://www.youtube.com/embed/dQw4w9WgXcQ'
+                              };
+                              
+                              const { data, error } = await supabase
+                                .from('cartes')
+                                .insert([cardData])
+                                .select();
+                              
+                              if (error) {
+                                console.error('Erreur:', error);
+                                alert('Erreur lors de l\'ajout de la carte iatube');
+                              } else {
+                                console.log('Carte iatube ajoutée:', data);
+                                alert('Carte iatube ajoutée avec succès !');
+                                // Recharger les cartes
+                                const { data: cardsData } = await supabase.from('cartes').select('*');
+                                if (cardsData) {
+                                  const cardsWithRoles = cardsData.map(card => ({
+                                    ...card,
+                                    category: card.category || 'Non classé',
+                                    role: getRandomRole(),
+                                    usage_count: Math.floor(Math.random() * 1000) + 1,
+                                    experience_level: getRandomExperienceLevel()
+                                  }));
+                                  setCards(cardsWithRoles);
+                                }
+                              }
+                            } catch (error) {
+                              console.error('Erreur:', error);
+                              alert('Erreur lors de l\'ajout de la carte iatube');
+                            }
+                          }}
+                          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                        >
+                          🧪 Ajouter iatube
+                        </button>
+                      </>
                     )}
                     
                                          <select 
@@ -576,7 +764,7 @@ export default function Home() {
                       <div className="p-6 pb-4">
                         <div className="flex items-start justify-between mb-3">
                           <span className="inline-block px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded">
-                            {card.category}
+                            {toUpperCase(cleanCategory(card.category))}
                           </span>
                           {session && role === 'admin' && (
                             <div className="flex gap-1">
@@ -652,16 +840,32 @@ export default function Home() {
                           <div className="text-2xl font-bold text-blue-900">
                             €{card.price}
                           </div>
-                          <button 
-                            className={`px-6 py-2 rounded-lg font-semibold text-sm transition-colors ${
-                              isCardSelected(card.id) 
-                                ? 'bg-green-600 hover:bg-green-700 text-white' 
-                                : 'bg-blue-600 hover:bg-blue-700 text-white'
-                            }`}
-                            onClick={() => handleSubscribe(card)}
-                          >
-                            {isCardSelected(card.id) ? 'Abonné' : 'S\'abonner'}
-                          </button>
+                          <div className="flex gap-2">
+                            {/* Bouton d'accès direct pour les modules avec abonnement actif */}
+                            {session && userSubscriptions[card.title] && getModuleAccessUrl(card.title) && (
+                              <button 
+                                className="px-4 py-2 rounded-lg font-semibold text-sm bg-green-600 hover:bg-green-700 text-white transition-colors"
+                                onClick={async () => {
+                                  const url = await getModuleAccessUrl(card.title);
+                                  if (url) window.open(url, '_blank');
+                                }}
+                                title={`Accéder directement à ${card.title}`}
+                              >
+                                📺 Accéder
+                              </button>
+                            )}
+                            
+                            <button 
+                              className={`px-6 py-2 rounded-lg font-semibold text-sm transition-colors ${
+                                isCardSelected(card.id) 
+                                  ? 'bg-green-600 hover:bg-green-700 text-white' 
+                                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+                              }`}
+                              onClick={() => handleSubscribe(card)}
+                            >
+                              {isCardSelected(card.id) ? 'Abonné' : 'S\'abonner'}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -798,10 +1002,14 @@ function AdminCardModal({ card, isAdding, onSave, onClose }: {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Sélectionner une catégorie</option>
-                <option value="IA Photo">IA Photo</option>
-                <option value="IA Video">IA Video</option>
-                <option value="IA Prompts">IA Prompts</option>
-                <option value="Bureautique">Bureautique</option>
+                <option value="IA ASSISTANT">IA ASSISTANT</option>
+                <option value="IA BUREAUTIQUE">IA BUREAUTIQUE</option>
+                <option value="IA PHOTO">IA PHOTO</option>
+                <option value="IA VIDEO">IA VIDEO</option>
+                <option value="IA MAO">IA MAO</option>
+                <option value="IA PROMPTS">IA PROMPTS</option>
+                <option value="IA MARKETING">IA MARKETING</option>
+                <option value="IA DESIGN">IA DESIGN</option>
               </select>
             </div>
 

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../../utils/supabaseClient';
 import StripeCheckout from '../../components/StripeCheckout';
+import Link from 'next/link';
 
 export default function SubscriptionsPage() {
   const router = useRouter();
@@ -12,6 +13,19 @@ export default function SubscriptionsPage() {
   const [role, setRole] = useState<string | null>(null);
   const [cards, setCards] = useState<any[]>([]);
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
+  const [userSubscriptions, setUserSubscriptions] = useState<{[key: string]: boolean}>({});
+
+  // Fonction pour obtenir l'URL d'accès d'un module
+  const getModuleAccessUrl = (moduleName: string) => {
+    const moduleUrls: { [key: string]: string } = {
+      'IAmetube': 'https://metube.regispailler.fr',
+      // Ajouter d'autres modules ici quand ils seront disponibles
+      // 'IAphoto': 'https://iaphoto.regispailler.fr',
+      // 'IAvideo': 'https://iavideo.regispailler.fr',
+    };
+    
+    return moduleUrls[moduleName] || null;
+  };
 
   useEffect(() => {
     // Récupérer la session actuelle
@@ -37,13 +51,44 @@ export default function SubscriptionsPage() {
   useEffect(() => {
     if (user) {
       supabase
-        .from('users')
+        .from('profiles')
         .select('role')
         .eq('id', user.id)
         .single()
         .then(({ data }) => {
           if (data) setRole(data.role);
         });
+    }
+  }, [user]);
+
+  // Vérifier les abonnements actifs de l'utilisateur
+  useEffect(() => {
+    const checkUserSubscriptions = async () => {
+      if (!user?.id) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('user_subscriptions')
+          .select('module_name, end_date')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .gt('end_date', new Date().toISOString());
+        
+        if (!error && data) {
+          const subscriptions: {[key: string]: boolean} = {};
+          data.forEach(sub => {
+            subscriptions[sub.module_name] = true;
+          });
+          setUserSubscriptions(subscriptions);
+          console.log('✅ Abonnements actifs:', subscriptions);
+        }
+      } catch (error) {
+        console.error('Erreur vérification abonnements:', error);
+      }
+    };
+
+    if (user) {
+      checkUserSubscriptions();
     }
   }, [user]);
 
@@ -122,8 +167,24 @@ export default function SubscriptionsPage() {
                   <li key={idx} className="border border-blue-100 rounded-lg p-4 flex flex-col gap-1 bg-blue-50">
                     <div className="font-semibold text-blue-900">{card.title || 'Carte sans titre'}</div>
                     {card.description && <div className="text-blue-900/80 text-sm">{card.description}</div>}
-                    {card.category && <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded w-fit mb-1">{card.category}</span>}
+                    {card.category && <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded w-fit mb-1">{card.category.toUpperCase().replace('BUILDING BLOCKS', 'IA ASSISTANT').replace('AI TOOLS', 'IA ASSISTANT').replace('MEDIA', 'IA ASSISTANT').replace('OUTILS', 'IA ASSISTANT').replace('TEMPLATES', 'IA ASSISTANT').replace('IA OUTILS', 'IA ASSISTANT').replace('MARKETING', 'IA MARKETING').replace('DESIGN', 'IA DESIGN')}</span>}
                     {card.price && <div className="text-blue-900 font-bold">Prix : {card.price} €</div>}
+                    
+                    {/* Bouton d'accès direct pour les modules avec abonnement actif */}
+                    {userSubscriptions[card.title] && getModuleAccessUrl(card.title) && (
+                      <div className="mt-2">
+                        <button 
+                          className="px-4 py-2 rounded-lg font-semibold text-sm bg-green-600 hover:bg-green-700 text-white transition-colors"
+                          onClick={() => {
+                            const url = getModuleAccessUrl(card.title);
+                            if (url) window.open(url, '_blank');
+                          }}
+                          title={`Accéder directement à ${card.title}`}
+                        >
+                          📺 Accéder à {card.title}
+                        </button>
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -190,13 +251,19 @@ export default function SubscriptionsPage() {
   return (
     <div className="min-h-screen flex flex-col items-center bg-blue-50 py-12">
       <div className="bg-white p-8 rounded shadow flex flex-col gap-4 w-full max-w-2xl mb-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-          <div>
-            <div className="text-blue-900 font-bold">{user?.email}</div>
-            <div className="text-xs text-gray-600">ID: {user?.id}</div>
-            <div className="text-xs text-green-700 font-bold">{role === 'admin' ? 'ADMIN' : role || 'USER'}</div>
-          </div>
-          <button className="text-blue-900 font-medium px-4 py-2 rounded hover:bg-blue-100 border border-blue-200" onClick={() => router.push('/')}>Retour à l'accueil</button>
+        <div className="flex items-center space-x-4">
+          <Link href="/" className="text-blue-600 hover:text-blue-700 font-semibold">
+            ← Retour à l'accueil
+          </Link>
+          <h1 className="text-2xl font-bold text-gray-900">🛒 Gestion des Abonnements</h1>
+        </div>
+        <div className="flex items-center space-x-4">
+          <Link 
+            href="/encours" 
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            📦 Voir mes abonnements actifs
+          </Link>
         </div>
       </div>
       <div className="bg-white p-8 rounded shadow w-full max-w-2xl">
@@ -210,8 +277,24 @@ export default function SubscriptionsPage() {
                 <li key={idx} className="border border-blue-100 rounded-lg p-4 flex flex-col gap-1 bg-blue-50">
                   <div className="font-semibold text-blue-900">{card.title || 'Carte sans titre'}</div>
                   {card.description && <div className="text-blue-900/80 text-sm">{card.description}</div>}
-                  {card.category && <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded w-fit mb-1">{card.category}</span>}
+                  {card.category && <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded w-fit mb-1">{card.category.toUpperCase().replace('BUILDING BLOCKS', 'IA ASSISTANT').replace('AI TOOLS', 'IA ASSISTANT').replace('MEDIA', 'IA ASSISTANT').replace('OUTILS', 'IA ASSISTANT').replace('TEMPLATES', 'IA ASSISTANT').replace('IA OUTILS', 'IA ASSISTANT').replace('MARKETING', 'IA MARKETING').replace('DESIGN', 'IA DESIGN')}</span>}
                   {card.price && <div className="text-blue-900 font-bold">Prix : {card.price} €</div>}
+                  
+                  {/* Bouton d'accès direct pour les modules avec abonnement actif */}
+                  {userSubscriptions[card.title] && getModuleAccessUrl(card.title) && (
+                    <div className="mt-2">
+                      <button 
+                        className="px-4 py-2 rounded-lg font-semibold text-sm bg-green-600 hover:bg-green-700 text-white transition-colors"
+                        onClick={() => {
+                          const url = getModuleAccessUrl(card.title);
+                          if (url) window.open(url, '_blank');
+                        }}
+                        title={`Accéder directement à ${card.title}`}
+                      >
+                        📺 Accéder à {card.title}
+                      </button>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

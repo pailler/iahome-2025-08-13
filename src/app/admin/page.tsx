@@ -45,7 +45,7 @@ export default function AdminPage() {
     console.log('Admin - Vérification du rôle pour l\'utilisateur:', userId);
     
     const { data, error } = await supabase
-      .from('users')
+      .from('profiles')
       .select('role')
       .eq('id', userId)
       .single();
@@ -61,7 +61,7 @@ export default function AdminPage() {
         const newRole = 'admin'; // Tous les utilisateurs sont admin
         
         const { error: insertError } = await supabase
-          .from('users')
+          .from('profiles')
           .insert({ id: userId, role: newRole });
         
         if (insertError) {
@@ -134,15 +134,15 @@ export default function AdminPage() {
     }
 
     try {
-      const { error } = await supabase
-        .from('cartes')
-        .insert([{
-          title: newCard.title,
-          description: newCard.description,
-          category: newCard.category,
-          price: parseFloat(newCard.price),
-          youtube_url: newCard.youtube_url
-        }]);
+              const { error } = await supabase
+          .from('cartes')
+          .insert([{
+            title: newCard.title,
+            description: newCard.description,
+            category: newCard.category.toUpperCase(),
+            price: parseFloat(newCard.price),
+            youtube_url: newCard.youtube_url
+          }]);
 
       if (error) {
         setMessage('Erreur lors de l\'ajout de la carte: ' + error.message);
@@ -250,14 +250,22 @@ export default function AdminPage() {
               className="border rounded px-3 py-2"
               required
             />
-            <input
-              type="text"
-              placeholder="Catégorie *"
+            <select
               value={newCard.category}
               onChange={(e) => setNewCard({...newCard, category: e.target.value})}
               className="border rounded px-3 py-2"
               required
-            />
+            >
+              <option value="">Sélectionner une catégorie *</option>
+              <option value="IA ASSISTANT">IA ASSISTANT</option>
+              <option value="IA BUREAUTIQUE">IA BUREAUTIQUE</option>
+              <option value="IA PHOTO">IA PHOTO</option>
+              <option value="IA VIDEO">IA VIDEO</option>
+              <option value="IA MAO">IA MAO</option>
+              <option value="IA PROMPTS">IA PROMPTS</option>
+              <option value="IA MARKETING">IA MARKETING</option>
+              <option value="IA DESIGN">IA DESIGN</option>
+            </select>
             <input
               type="number"
               step="0.01"

@@ -3,50 +3,72 @@ import Stripe from 'stripe';
 
 export async function GET() {
   try {
-    const secretKey = process.env.STRIPE_SECRET_KEY;
-    const publicKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+    console.log('🔍 Test configuration Stripe');
     
-    const result = {
-      secretKeyConfigured: !!secretKey,
-      publicKeyConfigured: !!publicKey,
-      secretKeyPrefix: secretKey ? secretKey.substring(0, 7) + '...' : 'Non configurée',
-      publicKeyPrefix: publicKey ? publicKey.substring(0, 7) + '...' : 'Non configurée',
-      errors: [] as string[]
-    };
-
-    // Vérifier si les clés sont présentes
-    if (!secretKey) {
-      result.errors.push('Clé secrète Stripe manquante (STRIPE_SECRET_KEY)');
+    // Vérifier les variables d'environnement
+    const hasSecretKey = !!process.env.STRIPE_SECRET_KEY;
+    const hasPublishableKey = !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+    const secretKeyLength = process.env.STRIPE_SECRET_KEY?.length || 0;
+    const publishableKeyLength = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.length || 0;
+    
+    console.log('🔍 Variables d\'environnement:', {
+      hasSecretKey,
+      hasPublishableKey,
+      secretKeyLength,
+      publishableKeyLength
+    });
+    
+    if (!hasSecretKey) {
+      return NextResponse.json({
+        error: 'STRIPE_SECRET_KEY manquante',
+        details: {
+          hasSecretKey,
+          hasPublishableKey,
+          secretKeyLength,
+          publishableKeyLength
+        }
+      }, { status: 400 });
     }
     
-    if (!publicKey) {
-      result.errors.push('Clé publique Stripe manquante (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)');
-    }
-
-    // Tester la connexion Stripe si la clé secrète est présente
-    if (secretKey) {
-      try {
-        const stripe = new Stripe(secretKey, {
-          apiVersion: '2023-10-16',
-        });
-        
-        // Test simple de connexion
-        const account = await stripe.accounts.retrieve();
-        result.stripeConnection = '✅ Connexion Stripe réussie';
-        result.accountId = account.id;
-      } catch (stripeError) {
-        result.stripeConnection = '❌ Erreur de connexion Stripe';
-        result.errors.push(`Erreur Stripe: ${stripeError instanceof Error ? stripeError.message : 'Erreur inconnue'}`);
-      }
-    } else {
-      result.stripeConnection = '❌ Impossible de tester (clé manquante)';
-    }
-
-    return NextResponse.json(result);
-  } catch (error) {
+    // Tester la connexion Stripe
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: '2025-06-30.basil',
+    });
+    
+    // Tester une requête simple vers Stripe
+    const account = await stripe.accounts.retrieve();
+    
+    console.log('✅ Connexion Stripe réussie');
+    
     return NextResponse.json({
-      error: 'Erreur lors du test de configuration',
-      details: error instanceof Error ? error.message : 'Erreur inconnue'
+      success: true,
+      message: 'Configuration Stripe OK',
+      account: {
+        id: account.id,
+        business_type: account.business_type,
+        charges_enabled: account.charges_enabled,
+        payouts_enabled: account.payouts_enabled
+      },
+      config: {
+        hasSecretKey,
+        hasPublishableKey,
+        secretKeyLength,
+        publishableKeyLength
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur test configuration Stripe:', error);
+    
+    return NextResponse.json({
+      error: 'Erreur configuration Stripe',
+      details: error instanceof Error ? error.message : 'Erreur inconnue',
+      config: {
+        hasSecretKey: !!process.env.STRIPE_SECRET_KEY,
+        hasPublishableKey: !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+        secretKeyLength: process.env.STRIPE_SECRET_KEY?.length || 0,
+        publishableKeyLength: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.length || 0
+      }
     }, { status: 500 });
   }
 } 

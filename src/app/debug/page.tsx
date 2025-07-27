@@ -46,7 +46,7 @@ export default function DebugPage() {
       if (user) {
         try {
           const { data, error } = await supabase
-            .from('users')
+            .from('profiles')
             .select('*')
             .eq('id', user.id)
             .single();

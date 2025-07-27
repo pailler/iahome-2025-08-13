@@ -2,83 +2,86 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16',
+  apiVersion: '2025-06-30.basil',
 });
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('=== DÉBUT CRÉATION SESSION STRIPE ===');
+    console.log('🔍 Debug - API create-payment-intent appelée');
+    console.log('🔍 Debug - STRIPE_SECRET_KEY existe:', !!process.env.STRIPE_SECRET_KEY);
+    console.log('🔍 Debug - STRIPE_SECRET_KEY longueur:', process.env.STRIPE_SECRET_KEY?.length);
     
-    // Vérifier si Stripe est configuré
-    if (!process.env.STRIPE_SECRET_KEY) {
-      console.error('Clé secrète Stripe manquante');
-      return NextResponse.json(
-        { error: 'Stripe n\'est pas configuré côté serveur' },
-        { status: 500 }
-      );
-    }
+    const body = await request.json();
+    const { items, customerEmail, type } = body;
 
-    const { amount, items, customerEmail } = await request.json();
-    console.log('Données reçues:', { amount, itemsCount: items?.length, customerEmail });
+    console.log('🔍 Debug - Création session Stripe:', { items, customerEmail, type });
+    console.log('🔍 Debug - Body complet:', body);
 
-    // Vérifier si des articles sont présents
-    if (!items || items.length === 0) {
-      console.error('Aucun article fourni');
+    if (!customerEmail) {
+      console.error('❌ Erreur - Email client manquant');
       return NextResponse.json(
-        { error: 'Aucun article fourni' },
+        { error: 'Email client requis' },
         { status: 400 }
       );
     }
 
-    console.log('Articles à traiter:', items.map(item => ({
-      id: item.id,
-      title: item.title,
-      price: item.price
-    })));
+    if (!items || items.length === 0) {
+      console.error('❌ Erreur - Items manquants');
+      return NextResponse.json(
+        { error: 'Items requis' },
+        { status: 400 }
+      );
+    }
 
-    // Créer une session de paiement Stripe
-    console.log('Création de la session Stripe...');
+    // Calculer le montant total à partir des items
+    const totalAmount = items.reduce((total: number, item: any) => total + (item.price || 0), 0);
+    
+    if (totalAmount <= 0) {
+      console.error('❌ Erreur - Montant total invalide:', totalAmount);
+      return NextResponse.json(
+        { error: 'Montant total invalide' },
+        { status: 400 }
+      );
+    }
+
+    console.log('🔍 Debug - Validation OK, création session...');
+
+    // Créer une session de paiement avec les métadonnées
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: items.map((item: any) => ({
         price_data: {
           currency: 'eur',
           product_data: {
-            name: item.title || 'Article sans titre',
-            description: item.description || 'Aucune description',
+            name: item.title,
           },
-          unit_amount: Math.round((item.price || 0) * 100), // Stripe utilise les centimes
+          unit_amount: Math.round((item.price || 0) * 100), // Convertir en centimes
         },
         quantity: 1,
       })),
-      mode: 'payment',
-      success_url: `https://home.regispailler.fr?payment=success`,
-      cancel_url: `${request.nextUrl.origin}/abonnements?canceled=true`,
+      mode: type === 'subscription' ? 'subscription' : 'payment',
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:8021'}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:8021'}/cancel`,
       customer_email: customerEmail,
       metadata: {
-        items: JSON.stringify(items.map((item: any) => ({ id: item.id, title: item.title }))),
+        customer_email: customerEmail,
+        items: JSON.stringify(items),
+        type: type,
       },
     });
 
-    console.log('Session Stripe créée avec succès:', session.id);
-    return NextResponse.json({ sessionId: session.id });
+    console.log('🔍 Debug - Session créée:', session.id);
+    console.log('🔍 Debug - URL session:', session.url);
+
+    return NextResponse.json({
+      sessionId: session.id,
+      url: session.url,
+    });
   } catch (error) {
-    console.error('Erreur lors de la création de la session Stripe:', error);
-    
-    // Retourner des détails sur l'erreur pour le débogage
-    let errorMessage = 'Erreur lors de la création du paiement';
-    
-    if (error instanceof Error) {
-      errorMessage = error.message;
-    } else if (typeof error === 'object' && error !== null) {
-      errorMessage = JSON.stringify(error);
-    }
-    
+    console.error('❌ Erreur création session Stripe:', error);
+    console.error('❌ Détails erreur:', JSON.stringify(error, null, 2));
     return NextResponse.json(
-      { 
-        error: errorMessage,
-        details: error instanceof Error ? error.stack : 'Pas de détails disponibles'
-      },
+      { error: 'Erreur lors de la création de la session' },
       { status: 500 }
     );
   }

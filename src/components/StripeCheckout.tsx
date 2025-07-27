@@ -41,6 +41,7 @@ export default function StripeCheckout({ items, customerEmail, onSuccess, onErro
         body: JSON.stringify({
           items,
           customerEmail,
+          type: 'payment', // Type de paiement (payment ou subscription)
         }),
       });
 

@@ -32,7 +32,7 @@ export default function TestConnectionPage() {
       
       // Test d'abord si la table existe
       const { data: tableTest, error: tableError } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
         .limit(1);
 
@@ -52,7 +52,7 @@ export default function TestConnectionPage() {
       if (tablesError) {
         // Fallback: essayer une requête simple
         const { data: simpleData, error: simpleError } = await supabase
-          .from('users')
+          .from('profiles')
           .select('*')
           .limit(1);
         
@@ -108,7 +108,7 @@ export default function TestConnectionPage() {
             <ol className="text-blue-600 list-decimal list-inside space-y-1">
               <li>Vérifiez que votre fichier .env.local contient les bonnes variables</li>
               <li>Exécutez le script test-connection.sql dans Supabase</li>
-              <li>Vérifiez que la table users existe</li>
+              <li>Vérifiez que la table profiles existe</li>
               <li>Si la table n'existe pas, elle sera créée automatiquement</li>
             </ol>
           </div>

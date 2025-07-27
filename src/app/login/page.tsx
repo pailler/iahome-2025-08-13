@@ -56,7 +56,7 @@ export default function LoginPage() {
         
         // Vérifier si le profil existe
         const { data: profileData, error: profileError } = await supabase
-          .from('users')
+          .from('profiles')
           .select('role')
           .eq('id', data.user.id)
           .single();

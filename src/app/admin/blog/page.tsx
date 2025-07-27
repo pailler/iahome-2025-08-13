@@ -75,7 +75,7 @@ export default function AdminBlogPage() {
       console.log('Admin Blog - User ID:', userId);
       
       const { data, error } = await supabase
-        .from('users')
+        .from('profiles')
         .select('role')
         .eq('id', userId)
         .single();
