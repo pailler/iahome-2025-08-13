@@ -1,19 +1,41 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../utils/supabaseClient';
 import { useRouter } from 'next/navigation';
-import { useSession, useUser } from '@supabase/auth-helpers-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isRegister, setIsRegister] = useState(false);
   const [message, setMessage] = useState('');
-  const session = useSession();
-  const user = useUser();
+  const [session, setSession] = useState<any>(null);
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  async function handleSubmit(e) {
+  // Gérer la session et l'utilisateur
+  useEffect(() => {
+    const getSession = async () => {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      setSession(currentSession);
+      setUser(currentSession?.user || null);
+      setLoading(false);
+    };
+
+    getSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setSession(session);
+        setUser(session?.user || null);
+        setLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setMessage('');
     
@@ -54,20 +76,10 @@ export default function LoginPage() {
         console.log('Connexion réussie, utilisateur:', data.user);
         console.log('Session créée:', !!data.session);
         
-        // Vérifier si le profil existe
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', data.user.id)
-          .single();
-        
-        if (profileError) {
-          console.error('Erreur lors de la vérification du profil:', profileError);
-          setMessage('⚠️ Connexion réussie mais problème avec le profil utilisateur.');
-        } else {
-          console.log('Profil trouvé avec le rôle:', profileData.role);
-          setMessage(`✅ Connexion réussie ! Rôle: ${profileData.role}`);
-        }
+        // Vérifier le rôle depuis les métadonnées utilisateur
+        const userRole = data.user?.user_metadata?.role || 'user';
+        console.log('Rôle utilisateur:', userRole);
+        setMessage(`✅ Connexion réussie ! Rôle: ${userRole}`);
         
         // Rediriger vers la page d'accueil
         setTimeout(() => {
@@ -80,6 +92,17 @@ export default function LoginPage() {
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push('/login');
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-blue-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Vérification de la session...</p>
+        </div>
+      </div>
+    );
   }
 
   if (session) {
