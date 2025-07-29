@@ -17,7 +17,7 @@ export async function validateAccessToken(token: string): Promise<AccessTokenDat
       .from('magic_links')
       .select('*')
       .eq('token', token)
-      .eq('is_used', false) // Vérifier qu'il n'est pas utilisé
+      // .eq('is_used', false) // COMMENTÉ POUR PERMETTRE LA RÉUTILISATION
       .single();
 
     console.log('🔍 [DEBUG] Résultat Supabase:', { data, error });
