@@ -3,21 +3,9 @@ import { validateAccessToken, hasPermission } from '../../../utils/accessToken';
 
 // Configuration des credentials pour chaque module
 const MODULE_CREDENTIALS: { [key: string]: { username: string; password: string } } = {
-  'IAmetube': {
-    username: process.env.METUBE_USERNAME || 'admin',
-    password: process.env.METUBE_PASSWORD || 'password'
-  },
   'stablediffusion': {
     username: process.env.STABLEDIFFUSION_USERNAME || 'admin',
     password: process.env.STABLEDIFFUSION_PASSWORD || 'Rasulova75'
-  },
-  'IAphoto': {
-    username: process.env.IAPHOTO_USERNAME || 'admin',
-    password: process.env.IAPHOTO_PASSWORD || 'password'
-  },
-  'IAvideo': {
-    username: process.env.IAVIDEO_USERNAME || 'admin',
-    password: process.env.IAVIDEO_PASSWORD || 'password'
   },
 };
 
@@ -26,6 +14,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const token = searchParams.get('token');
     const module = searchParams.get('module');
+    const path = searchParams.get('path') || '';
 
     if (!token || !module) {
       return NextResponse.json(
@@ -55,10 +44,7 @@ export async function GET(request: NextRequest) {
 
     // Configuration des URLs de base pour chaque module
     const moduleUrls: { [key: string]: string } = {
-      'IAmetube': 'https://metube.regispailler.fr',
       'stablediffusion': 'https://stablediffusion.regispailler.fr',
-      'IAphoto': 'https://iaphoto.regispailler.fr',
-      'IAvideo': 'https://iavideo.regispailler.fr',
     };
 
     const targetUrl = moduleUrls[module];
@@ -78,13 +64,44 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Créer l'URL de la page proxy qui gère l'authentification
-    const proxyUrl = `http://localhost:8021/proxy/${module}?token=${token}`;
-    
-    console.log('✅ Redirection vers page proxy:', proxyUrl);
-    console.log('🔐 Module:', module, 'avec authentification automatique');
+    // Construire l'URL cible
+    const fullUrl = `${targetUrl}${path}`;
+    console.log('🔍 Proxy vers:', fullUrl);
 
-    return NextResponse.redirect(proxyUrl);
+    // Encoder les credentials en base64
+    const authString = Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64');
+
+    // Faire la requête avec authentification
+    const response = await fetch(fullUrl, {
+      headers: {
+        'Authorization': `Basic ${authString}`,
+        'User-Agent': 'IAHome-Proxy/1.0'
+      }
+    });
+
+    if (!response.ok) {
+      console.error('❌ Erreur lors de la récupération:', response.status, response.statusText);
+      return NextResponse.json(
+        { error: `Erreur lors de l'accès: ${response.status}` },
+        { status: response.status }
+      );
+    }
+
+    // Récupérer le contenu
+    const contentType = response.headers.get('content-type') || 'text/html';
+    const content = await response.text();
+
+    console.log('✅ Contenu récupéré avec succès, type:', contentType);
+
+    // Retourner le contenu avec les bons en-têtes
+    return new NextResponse(content, {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Cache-Control': 'no-cache',
+        'X-Proxy-By': 'IAHome'
+      }
+    });
 
   } catch (error) {
     console.error('❌ Erreur proxy:', error);
