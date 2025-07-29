@@ -118,5 +118,5 @@ async function addIatubeCard() {
   console.log('2. Allez sur la page /encours');
   console.log('3. Cherchez l\'abonnement "iatube"');
   console.log('4. Cliquez sur "Générer Magic Link"');
-  console.log('5. Vous devriez être redirigé vers Google !');
+  console.log('5. Vous devriez être redirigé vers Metube !');
 })();

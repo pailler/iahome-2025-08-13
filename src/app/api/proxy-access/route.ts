@@ -1,6 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateAccessToken, hasPermission } from '../../../utils/accessToken';
 
+// Configuration des credentials pour chaque module
+const MODULE_CREDENTIALS: { [key: string]: { username: string; password: string } } = {
+  'IAmetube': {
+    username: process.env.METUBE_USERNAME || 'admin',
+    password: process.env.METUBE_PASSWORD || 'password'
+  },
+  'stablediffusion': {
+    username: process.env.STABLEDIFFUSION_USERNAME || 'admin',
+    password: process.env.STABLEDIFFUSION_PASSWORD || 'password'
+  },
+  'IAphoto': {
+    username: process.env.IAPHOTO_USERNAME || 'admin',
+    password: process.env.IAPHOTO_PASSWORD || 'password'
+  },
+  'IAvideo': {
+    username: process.env.IAVIDEO_USERNAME || 'admin',
+    password: process.env.IAVIDEO_PASSWORD || 'password'
+  },
+};
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -34,6 +54,7 @@ export async function GET(request: NextRequest) {
     // Configuration des URLs de base pour chaque module
     const moduleUrls: { [key: string]: string } = {
       'IAmetube': 'https://metube.regispailler.fr',
+      'stablediffusion': 'https://stablediffusion.regispailler.fr',
       'IAphoto': 'https://iaphoto.regispailler.fr',
       'IAvideo': 'https://iavideo.regispailler.fr',
     };
@@ -46,10 +67,23 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Rediriger vers l'application avec le token en paramètre
-    const finalUrl = `${targetUrl}?access_token=${token}`;
+    // Récupérer les credentials pour ce module
+    const credentials = MODULE_CREDENTIALS[module];
+    if (!credentials) {
+      return NextResponse.json(
+        { error: 'Configuration des credentials manquante' },
+        { status: 500 }
+      );
+    }
+
+    // Encoder les credentials en base64
+    const authString = Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64');
+    
+    // Créer l'URL finale avec les credentials
+    const finalUrl = `${targetUrl}?access_token=${token}&auth=${authString}`;
     
     console.log('✅ Proxy redirection vers:', finalUrl);
+    console.log('🔐 Module:', module, 'avec authentification automatique');
 
     return NextResponse.redirect(finalUrl);
 

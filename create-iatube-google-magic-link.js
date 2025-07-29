@@ -26,7 +26,7 @@ async function listUserIds() {
 
 async function createIatubeGoogleMagicLink(userId) {
   try {
-    console.log('\n🔗 Création du magic link pour iatube (Google)...');
+    console.log('\n🔗 Création du magic link pour iatube (Metube)...');
     
     // Générer un token unique
     const crypto = require('crypto');
@@ -42,7 +42,7 @@ async function createIatubeGoogleMagicLink(userId) {
       subscription_id: 'iatube-sub-789',
       module_name: 'iatube', // Module iatube
       user_email: 'test@example.com',
-      redirect_url: 'https://www.google.com',
+      redirect_url: 'https://metube.regispailler.fr',
       expires_at: expiresAt.toISOString(),
       is_used: false
     };
@@ -86,7 +86,7 @@ async function createIatubeGoogleMagicLink(userId) {
 
 // Script principal
 (async () => {
-  console.log('🚀 Création d\'un magic link pour iatube (Google)...\n');
+  console.log('🚀 Création d\'un magic link pour iatube (Metube)...\n');
   
   const userIds = await listUserIds();
   if (userIds.length === 0) {

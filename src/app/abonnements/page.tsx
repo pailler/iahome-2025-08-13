@@ -171,15 +171,33 @@ export default function SubscriptionsPage() {
                     {card.price && <div className="text-blue-900 font-bold">Prix : {card.price} €</div>}
                     
                     {/* Bouton d'accès direct pour les modules avec abonnement actif */}
-                    {userSubscriptions[card.title] && getModuleAccessUrl(card.title) && (
+                    {userSubscriptions[card.title] && (
                       <div className="mt-2">
                         <button 
                           className="px-4 py-2 rounded-lg font-semibold text-sm bg-green-600 hover:bg-green-700 text-white transition-colors"
                           onClick={() => {
-                            const url = getModuleAccessUrl(card.title);
-                            if (url) window.open(url, '_blank');
+                            // Vérifier si c'est un module qui nécessite un magic link
+                            if (card.title === 'iatube' || card.title.toLowerCase().includes('iatube')) {
+                              // Pour iatube, on ne peut pas accéder directement depuis cette page
+                              alert('Pour accéder à iatube, veuillez retourner à la page principale et cliquer sur le bouton d\'accès.');
+                              return;
+                            } else {
+                              // Accès direct pour les autres modules
+                              const moduleUrls: { [key: string]: string } = {
+                                'IAmetube': 'https://metube.regispailler.fr',
+                                'stablediffusion': 'https://stablediffusion.regispailler.fr',
+                                'IAphoto': 'https://iaphoto.regispailler.fr',
+                                'IAvideo': 'https://iavideo.regispailler.fr',
+                              };
+                              
+                              const directUrl = moduleUrls[card.title];
+                              if (directUrl) {
+                                console.log('🔍 Accès direct vers:', directUrl);
+                                window.open(directUrl, '_blank');
+                              }
+                            }
                           }}
-                          title={`Accéder directement à ${card.title}`}
+                          title={`Accéder à ${card.title}`}
                         >
                           📺 Accéder à {card.title}
                         </button>
@@ -280,21 +298,39 @@ export default function SubscriptionsPage() {
                   {card.category && <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded w-fit mb-1">{card.category.toUpperCase().replace('BUILDING BLOCKS', 'IA ASSISTANT').replace('AI TOOLS', 'IA ASSISTANT').replace('MEDIA', 'IA ASSISTANT').replace('OUTILS', 'IA ASSISTANT').replace('TEMPLATES', 'IA ASSISTANT').replace('IA OUTILS', 'IA ASSISTANT').replace('MARKETING', 'IA MARKETING').replace('DESIGN', 'IA DESIGN')}</span>}
                   {card.price && <div className="text-blue-900 font-bold">Prix : {card.price} €</div>}
                   
-                  {/* Bouton d'accès direct pour les modules avec abonnement actif */}
-                  {userSubscriptions[card.title] && getModuleAccessUrl(card.title) && (
-                    <div className="mt-2">
-                      <button 
-                        className="px-4 py-2 rounded-lg font-semibold text-sm bg-green-600 hover:bg-green-700 text-white transition-colors"
-                        onClick={() => {
-                          const url = getModuleAccessUrl(card.title);
-                          if (url) window.open(url, '_blank');
-                        }}
-                        title={`Accéder directement à ${card.title}`}
-                      >
-                        📺 Accéder à {card.title}
-                      </button>
-                    </div>
-                  )}
+                                      {/* Bouton d'accès direct pour les modules avec abonnement actif */}
+                    {userSubscriptions[card.title] && (
+                      <div className="mt-2">
+                        <button 
+                          className="px-4 py-2 rounded-lg font-semibold text-sm bg-green-600 hover:bg-green-700 text-white transition-colors"
+                          onClick={() => {
+                            // Vérifier si c'est un module qui nécessite un magic link
+                            if (card.title === 'iatube' || card.title.toLowerCase().includes('iatube')) {
+                              // Pour iatube, on ne peut pas accéder directement depuis cette page
+                              alert('Pour accéder à iatube, veuillez retourner à la page principale et cliquer sur le bouton d\'accès.');
+                              return;
+                            } else {
+                              // Accès direct pour les autres modules
+                              const moduleUrls: { [key: string]: string } = {
+                                'IAmetube': 'https://metube.regispailler.fr',
+                                'stablediffusion': 'https://stablediffusion.regispailler.fr',
+                                'IAphoto': 'https://iaphoto.regispailler.fr',
+                                'IAvideo': 'https://iavideo.regispailler.fr',
+                              };
+                              
+                              const directUrl = moduleUrls[card.title];
+                              if (directUrl) {
+                                console.log('🔍 Accès direct vers:', directUrl);
+                                window.open(directUrl, '_blank');
+                              }
+                            }
+                          }}
+                          title={`Accéder à ${card.title}`}
+                        >
+                          📺 Accéder à {card.title}
+                        </button>
+                      </div>
+                    )}
                 </li>
               ))}
             </ul>

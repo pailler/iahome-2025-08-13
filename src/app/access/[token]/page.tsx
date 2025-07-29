@@ -30,7 +30,6 @@ export default function AccessPage() {
 
         console.log('🔍 [PAGE] Appel validateAccessToken...');
         
-        // Valider le token de manière asynchrone
         const tokenData = await validateAccessToken(token);
         
         console.log('🔍 [PAGE] Résultat validateAccessToken:', tokenData);
@@ -54,24 +53,8 @@ export default function AccessPage() {
         setAccessData(tokenData);
         console.log('✅ Accès validé pour:', tokenData);
 
-        // Rediriger vers le module après un court délai
-        setTimeout(() => {
-          const moduleUrls: { [key: string]: string } = {
-            'IAmetube': 'https://metube.regispailler.fr',
-            'IAphoto': 'https://iaphoto.regispailler.fr',
-            'IAvideo': 'https://iavideo.regispailler.fr',
-            'test-module': 'https://test.example.com', // URL de test
-            'Google': 'https://www.google.com', // Ajout de Google
-            'iatube': 'https://www.google.com', // Ajout de iatube (redirige vers Google)
-          };
-
-          const targetUrl = moduleUrls[tokenData.moduleName];
-          if (targetUrl) {
-            console.log('🔍 [PAGE] Redirection vers:', targetUrl);
-            // Ouvrir dans un nouvel onglet avec le token
-            window.open(`${targetUrl}?token=${token}`, '_blank');
-          }
-        }, 2000);
+        // Pas de redirection automatique pour éviter les boucles
+        // L'utilisateur cliquera sur le bouton pour accéder au module
 
       } catch (error) {
         console.error('❌ [PAGE] Erreur validation token:', error);
@@ -120,13 +103,36 @@ export default function AccessPage() {
           <div className="text-6xl mb-4">✅</div>
           <h2 className="text-2xl font-semibold text-gray-900 mb-2">Accès autorisé</h2>
           <p className="text-gray-600 mb-4">
-            Redirection vers {accessData.moduleName}...
+            Module: {accessData.moduleName}
           </p>
-          <div className="animate-pulse">
+          <div className="animate-pulse mb-6">
             <div className="text-sm text-gray-500">
               Expire le: {accessData.expiresAt.toLocaleString('fr-FR')}
             </div>
           </div>
+          
+          {/* Bouton de redirection manuelle */}
+          <button
+            onClick={() => {
+              const moduleUrls: { [key: string]: string } = {
+                'IAmetube': 'https://metube.regispailler.fr',
+                'IAphoto': 'https://iaphoto.regispailler.fr',
+                'IAvideo': 'https://iavideo.regispailler.fr',
+                'test-module': 'https://test.example.com',
+                'Google': 'https://www.google.com',
+                'iatube': 'https://metube.regispailler.fr',
+              };
+
+              const targetUrl = moduleUrls[accessData.moduleName];
+              if (targetUrl) {
+                console.log('🔍 [PAGE] Redirection manuelle vers:', targetUrl);
+                window.location.href = `${targetUrl}?token=${token}`;
+              }
+            }}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            🚀 Accéder à {accessData.moduleName}
+          </button>
         </div>
       </div>
     );

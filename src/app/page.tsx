@@ -22,6 +22,7 @@ export default function Home() {
   const [sortBy, setSortBy] = useState('most_used');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [userSubscriptions, setUserSubscriptions] = useState<{[key: string]: boolean}>({});
+  const [showScrollToTop, setShowScrollToTop] = useState(false);
 
   // Vérification de la configuration Supabase
   useEffect(() => {
@@ -243,7 +244,7 @@ export default function Home() {
   const getModuleAccessUrl = async (moduleName: string) => {
     const moduleUrls: { [key: string]: string } = {
       'IAmetube': 'https://metube.regispailler.fr',
-      'iatube': 'https://www.google.com', // Redirection vers Google pour iatube
+      'iatube': 'https://metube.regispailler.fr', // Redirection vers Metube pour iatube
       // Ajouter d'autres modules ici quand ils seront disponibles
       // 'IAphoto': 'https://iaphoto.regispailler.fr',
       // 'IAvideo': 'https://iavideo.regispailler.fr',
@@ -262,7 +263,7 @@ export default function Home() {
           subscriptionId: 'iatube-sub-789',
           moduleName: 'iatube',
           userEmail: user.email,
-          redirectUrl: 'https://www.google.com'
+          redirectUrl: 'https://metube.regispailler.fr'
         };
         
         console.log('🔍 Request body:', requestBody);
@@ -356,6 +357,55 @@ export default function Home() {
           return 0;
       }
     });
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const cardsPerPage = 9;
+  
+  // Calculer les indices pour la pagination
+  const indexOfLastCard = currentPage * cardsPerPage;
+  const indexOfFirstCard = indexOfLastCard - cardsPerPage;
+  const currentCards = filteredAndSortedCards.slice(indexOfFirstCard, indexOfLastCard);
+  
+  // Calculer le nombre total de pages
+  const totalPages = Math.ceil(filteredAndSortedCards.length / cardsPerPage);
+  
+  // Fonctions de navigation
+  const goToPage = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+  };
+  
+  const goToNextPage = () => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  };
+  
+  const goToPreviousPage = () => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  };
+  
+  // Réinitialiser la pagination quand les filtres changent
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, priceFilter, experienceFilter, sortBy, categoryFilter]);
+
+  // Détecter le scroll pour afficher/masquer le bouton de retour en haut
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      setShowScrollToTop(scrollTop > 300);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Fonction pour remonter en haut de page
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
 
   // Fonctions d'administration
   const handleEditCard = (card: any) => {
@@ -758,7 +808,7 @@ export default function Home() {
                     <div className="text-gray-500">Aucun template trouvé pour "{search}"</div>
                   </div>
                 ) : (
-                  filteredAndSortedCards.map((card) => (
+                  currentCards.map((card) => (
                     <div key={card.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
                       {/* En-tête de la carte */}
                       <div className="p-6 pb-4">
@@ -835,25 +885,42 @@ export default function Home() {
                           )}
                         </div>
 
-                        {/* Prix et bouton */}
-                        <div className="flex items-center justify-between">
-                          <div className="text-2xl font-bold text-blue-900">
-                            €{card.price}
-                          </div>
-                          <div className="flex gap-2">
-                            {/* Bouton d'accès direct pour les modules avec abonnement actif */}
-                            {session && userSubscriptions[card.title] && getModuleAccessUrl(card.title) && (
-                              <button 
-                                className="px-4 py-2 rounded-lg font-semibold text-sm bg-green-600 hover:bg-green-700 text-white transition-colors"
-                                onClick={async () => {
-                                  const url = await getModuleAccessUrl(card.title);
-                                  if (url) window.open(url, '_blank');
-                                }}
-                                title={`Accéder directement à ${card.title}`}
-                              >
-                                📺 Accéder
-                              </button>
-                            )}
+                                                 {/* Prix et bouton */}
+                         <div className="flex items-center justify-between">
+                           <div className="text-2xl font-bold text-blue-900">
+                             €{card.price}
+                           </div>
+                           <div className="flex gap-2">
+                             {/* Bouton d'accès direct pour les modules avec abonnement actif */}
+                             {session && userSubscriptions[card.title] && (
+                               <button 
+                                 className="px-4 py-2 rounded-lg font-semibold text-sm bg-green-600 hover:bg-green-700 text-white transition-colors"
+                                 onClick={async () => {
+                                   // Vérifier si c'est un module qui nécessite un magic link
+                                   if (card.title === 'iatube' || card.title.toLowerCase().includes('iatube')) {
+                                     // Créer un magic link
+                                     await getModuleAccessUrl(card.title);
+                                   } else {
+                                     // Accès direct pour les autres modules
+                                     const moduleUrls: { [key: string]: string } = {
+                                       'IAmetube': 'https://metube.regispailler.fr',
+                                       'stablediffusion': 'https://stablediffusion.regispailler.fr',
+                                       'IAphoto': 'https://iaphoto.regispailler.fr',
+                                       'IAvideo': 'https://iavideo.regispailler.fr',
+                                     };
+                                     
+                                     const directUrl = moduleUrls[card.title];
+                                     if (directUrl) {
+                                       console.log('🔍 Accès direct vers:', directUrl);
+                                       window.open(directUrl, '_blank');
+                                     }
+                                   }
+                                 }}
+                                 title={`Accéder à ${card.title}`}
+                               >
+                                 📺 Accéder
+                               </button>
+                             )}
                             
                             <button 
                               className={`px-6 py-2 rounded-lg font-semibold text-sm transition-colors ${
@@ -872,6 +939,71 @@ export default function Home() {
                   ))
                 )}
               </div>
+              
+              {/* Contrôles de pagination */}
+              {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-2 mt-8">
+                  <button
+                    onClick={goToPreviousPage}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    ← Précédent
+                  </button>
+                  
+                  {/* Numéros de pages */}
+                  <div className="flex gap-1">
+                    {Array.from({ length: totalPages }, (_, index) => {
+                      const pageNumber = index + 1;
+                      // Afficher seulement quelques pages autour de la page actuelle
+                      if (
+                        pageNumber === 1 ||
+                        pageNumber === totalPages ||
+                        (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1)
+                      ) {
+                        return (
+                          <button
+                            key={pageNumber}
+                            onClick={() => goToPage(pageNumber)}
+                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                              currentPage === pageNumber
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-200 hover:bg-gray-300'
+                            }`}
+                          >
+                            {pageNumber}
+                          </button>
+                        );
+                      } else if (
+                        pageNumber === currentPage - 2 ||
+                        pageNumber === currentPage + 2
+                      ) {
+                        return (
+                          <span key={pageNumber} className="px-2 py-2 text-gray-500">
+                            ...
+                          </span>
+                        );
+                      }
+                      return null;
+                    })}
+                  </div>
+                  
+                  <button
+                    onClick={goToNextPage}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Suivant →
+                  </button>
+                </div>
+              )}
+              
+              {/* Informations de pagination */}
+              {filteredAndSortedCards.length > 0 && (
+                <div className="text-center text-gray-600 text-sm mt-4">
+                  Affichage de {indexOfFirstCard + 1} à {Math.min(indexOfLastCard, filteredAndSortedCards.length)} sur {filteredAndSortedCards.length} templates
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -916,6 +1048,31 @@ export default function Home() {
             setIsAddingCard(false);
           }}
         />
+      )}
+
+      {/* Bouton de retour en haut */}
+      {showScrollToTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-8 right-8 z-50 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg transition-all duration-300 hover:scale-110"
+          title="Retour en haut"
+          aria-label="Retour en haut de page"
+        >
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            fill="none" 
+            viewBox="0 0 24 24" 
+            strokeWidth={2} 
+            stroke="currentColor" 
+            className="w-6 h-6"
+          >
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              d="M4.5 15.75l7.5-7.5 7.5 7.5" 
+            />
+          </svg>
+        </button>
       )}
     </div>
   );

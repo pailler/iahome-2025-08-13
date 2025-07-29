@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       'IAmetube': 'https://metube.regispailler.fr', // Utiliser l'adresse publique
       'IAphoto': 'https://iaphoto.regispailler.fr',
       'IAvideo': 'https://iavideo.regispailler.fr',
-      'iatube': 'https://www.google.com', // Module de test pour redirection vers Google
+      'iatube': 'https://metube.regispailler.fr', // Module de test pour redirection vers Metube
     };
 
     const baseUrl = moduleUrls[moduleName];
