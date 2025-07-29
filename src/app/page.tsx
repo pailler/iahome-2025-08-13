@@ -159,33 +159,19 @@ export default function Home() {
         console.log('Chargement du rôle pour:', user.email, 'ID:', user.id);
         
         try {
-          // Essayer d'abord de récupérer depuis profiles
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-          
-          if (error) {
-            console.warn('Erreur lors du chargement du rôle depuis profiles:', error);
-            
-            // Fallback: essayer de récupérer depuis auth.users
-            const { data: authData, error: authError } = await supabase.auth.getUser();
-            if (authError) {
-              console.error('Erreur lors du chargement depuis auth:', authError);
-              setRole(null);
-            } else {
-              const userRole = authData.user?.user_metadata?.role || 'user';
-              console.log('Rôle récupéré depuis auth.users:', userRole);
-              setRole(userRole);
-            }
+          // Essayer d'abord de récupérer depuis auth.users (plus fiable)
+          const { data: authData, error: authError } = await supabase.auth.getUser();
+          if (authError) {
+            console.warn('Erreur lors du chargement depuis auth:', authError);
+            setRole('user'); // Rôle par défaut
           } else {
-            console.log('Rôle trouvé dans profiles:', data.role);
-            setRole(data.role);
+            const userRole = authData.user?.user_metadata?.role || 'user';
+            console.log('Rôle récupéré depuis auth.users:', userRole);
+            setRole(userRole);
           }
         } catch (err) {
           console.error('Erreur inattendue lors du chargement du rôle:', err);
-          setRole(null);
+          setRole('user'); // Rôle par défaut
         }
       } else {
         console.log('Pas de session ou utilisateur:', { session: !!session, user: !!user });

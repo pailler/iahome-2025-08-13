@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
     // Configuration des URLs de base pour chaque module
     const moduleUrls: { [key: string]: string } = {
       'IAmetube': 'https://metube.regispailler.fr', // Utiliser l'adresse publique
+      'stablediffusion': 'https://stablediffusion.regispailler.fr', // Module StableDiffusion
       'IAphoto': 'https://iaphoto.regispailler.fr',
       'IAvideo': 'https://iavideo.regispailler.fr',
       'iatube': 'https://metube.regispailler.fr', // Module de test pour redirection vers Metube
