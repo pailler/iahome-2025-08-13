@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../utils/supabaseClient";
 import { useRouter } from 'next/navigation';
 import Link from "next/link";
+import StripeCheckout from "../components/StripeCheckout";
 
 export default function Home() {
   const router = useRouter();
@@ -1016,14 +1017,32 @@ export default function Home() {
             Prêt à activer vos abonnements ?
           </h2>
           <p className="text-blue-100 mb-8 text-lg">
-            Confirmez vos sélections et accédez à tous les outils IA
+            {selectedCards.length > 0 
+              ? `Sélectionnez vos ${selectedCards.length} abonnement(s) et accédez à tous les outils IA`
+              : 'Sélectionnez des cartes ci-dessus pour activer vos abonnements'
+            }
           </p>
-          <button
-            onClick={() => router.push('/abonnements')}
-            className="bg-white text-blue-600 font-semibold px-8 py-4 rounded-lg hover:bg-blue-50 transition-colors text-lg shadow-lg"
-          >
-            Confirmer les abonnements
-          </button>
+          {selectedCards.length > 0 ? (
+            <StripeCheckout
+              items={selectedCards}
+              customerEmail={user?.email}
+              onSuccess={() => {
+                alert('Paiement réussi ! Vos abonnements ont été activés.');
+                setSelectedCards([]);
+                localStorage.removeItem('selectedCards');
+              }}
+              onError={(error) => {
+                alert(`Erreur de paiement: ${error}`);
+              }}
+            />
+          ) : (
+            <button
+              onClick={() => router.push('/abonnements')}
+              className="bg-white text-blue-600 font-semibold px-8 py-4 rounded-lg hover:bg-blue-50 transition-colors text-lg shadow-lg"
+            >
+              Confirmer les abonnements
+            </button>
+          )}
         </div>
       </section>
 
