@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 export default function ProxyPage({ params }: { params: { module: string } }) {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
-  const [content, setContent] = useState<string>('');
+  const [iframeUrl, setIframeUrl] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
 
@@ -16,50 +16,36 @@ export default function ProxyPage({ params }: { params: { module: string } }) {
       return;
     }
 
-    const loadContent = async () => {
+    const setupIframe = async () => {
       try {
-        console.log('🔍 Chargement du contenu via proxy pour:', params.module);
+        console.log('🔍 Configuration de l\'iframe pour:', params.module);
         
-        // Charger la page principale via le proxy
-        const response = await fetch(`/api/proxy-module/?token=${token}&module=${params.module}`);
+        // Vérifier que l'utilisateur a accès à ce module
+        const response = await fetch(`/api/check-subscription?module=${params.module}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         
         if (!response.ok) {
-          throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+          throw new Error('Accès non autorisé à ce module');
         }
         
-        const html = await response.text();
-        console.log('✅ Contenu chargé avec succès');
+        // Utiliser l'URL du proxy qui gère l'authentification
+        const proxyUrl = `http://localhost:8021/api/proxy-module/?token=${token}&module=${params.module}`;
         
-        // Modifier le HTML pour intercepter toutes les requêtes
-        const modifiedHtml = html.replace(
-          /(src|href)=["']([^"']*\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot))["']/g,
-          (match, attr, url) => {
-            // Si c'est une URL relative, la transformer en requête proxy
-            if (url.startsWith('/') || url.startsWith('./') || url.startsWith('../')) {
-              const proxyUrl = `/api/proxy-module/${url}?token=${token}&module=${params.module}`;
-              return `${attr}="${proxyUrl}"`;
-            }
-            // Si c'est une URL absolue du même domaine, la transformer aussi
-            if (url.includes('stablediffusion.regispailler.fr')) {
-              const path = new URL(url).pathname;
-              const proxyUrl = `/api/proxy-module${path}?token=${token}&module=${params.module}`;
-              return `${attr}="${proxyUrl}"`;
-            }
-            return match;
-          }
-        );
-        
-        setContent(modifiedHtml);
+        console.log('✅ URL iframe configurée:', proxyUrl);
+        setIframeUrl(proxyUrl);
         
       } catch (err) {
-        console.error('❌ Erreur lors du chargement:', err);
+        console.error('❌ Erreur lors de la configuration:', err);
         setError(err instanceof Error ? err.message : 'Erreur inconnue');
       } finally {
         setLoading(false);
       }
     };
 
-    loadContent();
+    setupIframe();
   }, [token, params.module]);
 
   if (loading) {
@@ -92,9 +78,13 @@ export default function ProxyPage({ params }: { params: { module: string } }) {
   }
 
   return (
-    <div 
-      dangerouslySetInnerHTML={{ __html: content }}
-      className="w-full h-full"
-    />
+    <div className="w-full h-screen">
+      <iframe
+        src={iframeUrl}
+        className="w-full h-full border-0"
+        title={`${params.module} - Interface utilisateur`}
+        allow="fullscreen"
+      />
+    </div>
   );
 } 

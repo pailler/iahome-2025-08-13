@@ -67,8 +67,12 @@ export async function GET(
     }
 
     // Construire le chemin complet
-    const path = params.path.join('/');
-    const fullUrl = `${targetUrl}/${path}`;
+    let fullUrl = targetUrl;
+    if (params.path && params.path.length > 0) {
+      const path = params.path.join('/');
+      fullUrl = `${targetUrl}/${path}`;
+    }
+    
     console.log('🔍 Proxy vers:', fullUrl);
 
     // Encoder les credentials en base64
@@ -92,9 +96,32 @@ export async function GET(
 
     // Récupérer le contenu
     const contentType = response.headers.get('content-type') || 'text/html';
-    const content = await response.text();
+    let content = await response.text();
 
     console.log('✅ Contenu récupéré avec succès, type:', contentType);
+
+    // Si c'est du HTML, modifier les URLs pour qu'elles passent par le proxy
+    if (contentType.includes('text/html')) {
+      console.log('🔧 Modification des URLs dans le HTML...');
+      content = content.replace(
+        /(src|href)=["']([^"']*\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot))["']/g,
+        (match, attr, url) => {
+          // Si c'est une URL relative, la transformer en requête proxy
+          if (url.startsWith('/') || url.startsWith('./') || url.startsWith('../')) {
+            const proxyUrl = `/api/proxy-module/${url}?token=${token}&module=${module}`;
+            return `${attr}="${proxyUrl}"`;
+          }
+          // Si c'est une URL absolue du même domaine, la transformer aussi
+          if (url.includes('stablediffusion.regispailler.fr')) {
+            const path = new URL(url).pathname;
+            const proxyUrl = `/api/proxy-module${path}?token=${token}&module=${module}`;
+            return `${attr}="${proxyUrl}"`;
+          }
+          return match;
+        }
+      );
+      console.log('✅ URLs modifiées dans le HTML');
+    }
 
     // Retourner le contenu avec les bons en-têtes
     return new NextResponse(content, {
