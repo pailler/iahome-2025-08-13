@@ -81,11 +81,14 @@ export async function GET(request: NextRequest) {
     // Encoder les credentials en base64
     const authString = Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64');
     
-    // Créer l'URL finale avec les credentials
-    const finalUrl = `${targetUrl}?access_token=${token}&auth=${authString}`;
+    // Créer l'URL finale avec les credentials dans l'URL
+    // Format: https://username:password@domain.com
+    const urlWithAuth = targetUrl.replace('https://', `https://${credentials.username}:${credentials.password}@`);
+    const finalUrl = `${urlWithAuth}?access_token=${token}`;
     
     console.log('✅ Proxy redirection vers:', finalUrl);
     console.log('🔐 Module:', module, 'avec authentification automatique');
+    console.log('🔑 Credentials intégrés dans l\'URL');
 
     return NextResponse.redirect(finalUrl);
 
