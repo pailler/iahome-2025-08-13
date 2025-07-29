@@ -270,9 +270,9 @@ export default function Home() {
           console.log('🔍 Response data:', responseData);
           const token = responseData.data?.token || responseData.token;
           console.log('🔍 Token extrait:', token);
-          // Rediriger vers la page d'accès avec le magic link
-          const accessUrl = `http://localhost:8021/access/test-module?token=${token}&user=${user.id}`;
-          console.log('🔍 Access URL:', accessUrl);
+          // Rediriger vers l'API proxy-access qui inclut les credentials
+          const accessUrl = `http://localhost:8021/api/proxy-access?token=${token}&module=${moduleName}`;
+          console.log('🔍 Access URL avec credentials:', accessUrl);
           window.open(accessUrl, '_blank');
           return null; // Pas de redirection directe
         } else {

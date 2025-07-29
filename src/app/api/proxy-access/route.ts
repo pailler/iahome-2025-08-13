@@ -9,7 +9,7 @@ const MODULE_CREDENTIALS: { [key: string]: { username: string; password: string 
   },
   'stablediffusion': {
     username: process.env.STABLEDIFFUSION_USERNAME || 'admin',
-    password: process.env.STABLEDIFFUSION_PASSWORD || 'password'
+    password: process.env.STABLEDIFFUSION_PASSWORD || 'Rasulova75'
   },
   'IAphoto': {
     username: process.env.IAPHOTO_USERNAME || 'admin',
@@ -35,8 +35,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Valider le token d'accès
-    const accessData = validateAccessToken(token);
+    const accessData = await validateAccessToken(token);
     if (!accessData) {
+      console.error('❌ Token invalide ou expiré:', token);
       return NextResponse.json(
         { error: 'Token invalide ou expiré' },
         { status: 403 }
@@ -45,6 +46,7 @@ export async function GET(request: NextRequest) {
 
     // Vérifier les permissions
     if (!hasPermission(accessData, 'access')) {
+      console.error('❌ Permissions insuffisantes pour le token:', token);
       return NextResponse.json(
         { error: 'Permissions insuffisantes' },
         { status: 403 }

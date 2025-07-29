@@ -60,18 +60,12 @@ export async function POST(request: NextRequest) {
     console.log('✅ Magic link créé dans Supabase:', data.id);
 
     // Construire l'URL du magic link
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://home.regispailler.fr';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:8021';
     let magicLinkUrl: string;
 
     if (redirectUrl) {
-      // Si une URL de redirection est spécifiée, l'utiliser
-      // Pour metube, on utilise la nouvelle structure avec /validate
-      if (redirectUrl.includes('metube.regispailler.fr')) {
-        magicLinkUrl = `http://192.168.1.130:8083/validate?token=${token}&user=${userId}&module=${moduleName}`;
-      } else {
-        const separator = redirectUrl.includes('?') ? '&' : '?';
-        magicLinkUrl = `${redirectUrl}${separator}token=${token}&user=${userId}&module=${moduleName}`;
-      }
+      // Pour tous les modules, utiliser l'API proxy-access qui inclut les credentials
+      magicLinkUrl = `${baseUrl}/api/proxy-access?token=${token}&module=${moduleName}`;
     } else {
       // Sinon, utiliser l'URL par défaut
       magicLinkUrl = `${baseUrl}/access/${moduleName}?token=${token}&user=${userId}`;
