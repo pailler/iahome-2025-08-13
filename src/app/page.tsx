@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "../utils/supabaseClient";
 import { useRouter } from 'next/navigation';
 import Link from "next/link";
-import StripeCheckout from "../components/StripeCheckout";
 
 export default function Home() {
   const router = useRouter();
@@ -246,25 +245,26 @@ export default function Home() {
     const moduleUrls: { [key: string]: string } = {
       'IAmetube': 'https://metube.regispailler.fr',
       'iatube': 'https://metube.regispailler.fr', // Redirection vers Metube pour iatube
+      'stablediffusion': 'https://stablediffusion.regispailler.fr', // Redirection vers StableDiffusion
       // Ajouter d'autres modules ici quand ils seront disponibles
       // 'IAphoto': 'https://iaphoto.regispailler.fr',
       // 'IAvideo': 'https://iavideo.regispailler.fr',
     };
     
-    // Si c'est le module iatube, créer un magic link et rediriger
-    if (moduleName === 'iatube' && user?.id) {
+    // Si c'est le module iatube ou stablediffusion, créer un magic link et rediriger
+    if ((moduleName === 'iatube' || moduleName === 'stablediffusion') && user?.id) {
       try {
-        console.log('🔍 Création magic link pour iatube...');
+        console.log(`🔍 Création magic link pour ${moduleName}...`);
         console.log('🔍 User ID:', user.id);
         console.log('🔍 User email:', user.email);
         
-        // Créer un magic link pour iatube
+        // Créer un magic link pour le module
         const requestBody = {
           userId: user.id,
-          subscriptionId: 'iatube-sub-789',
-          moduleName: 'iatube',
+          subscriptionId: `${moduleName}-sub-789`,
+          moduleName: moduleName,
           userEmail: user.email,
-          redirectUrl: 'https://metube.regispailler.fr'
+          redirectUrl: moduleUrls[moduleName]
         };
         
         console.log('🔍 Request body:', requestBody);
@@ -898,14 +898,13 @@ export default function Home() {
                                  className="px-4 py-2 rounded-lg font-semibold text-sm bg-green-600 hover:bg-green-700 text-white transition-colors"
                                  onClick={async () => {
                                    // Vérifier si c'est un module qui nécessite un magic link
-                                   if (card.title === 'iatube' || card.title.toLowerCase().includes('iatube')) {
+                                   if (card.title === 'iatube' || card.title === 'stablediffusion' || card.title.toLowerCase().includes('iatube') || card.title.toLowerCase().includes('stablediffusion')) {
                                      // Créer un magic link
                                      await getModuleAccessUrl(card.title);
                                    } else {
                                      // Accès direct pour les autres modules
                                      const moduleUrls: { [key: string]: string } = {
                                        'IAmetube': 'https://metube.regispailler.fr',
-                                       'stablediffusion': 'https://stablediffusion.regispailler.fr',
                                        'IAphoto': 'https://iaphoto.regispailler.fr',
                                        'IAvideo': 'https://iavideo.regispailler.fr',
                                      };
@@ -1017,32 +1016,14 @@ export default function Home() {
             Prêt à activer vos abonnements ?
           </h2>
           <p className="text-blue-100 mb-8 text-lg">
-            {selectedCards.length > 0 
-              ? `Sélectionnez vos ${selectedCards.length} abonnement(s) et accédez à tous les outils IA`
-              : 'Sélectionnez des cartes ci-dessus pour activer vos abonnements'
-            }
+            Confirmez vos sélections et accédez à tous les outils IA
           </p>
-          {selectedCards.length > 0 ? (
-            <StripeCheckout
-              items={selectedCards}
-              customerEmail={user?.email}
-              onSuccess={() => {
-                alert('Paiement réussi ! Vos abonnements ont été activés.');
-                setSelectedCards([]);
-                localStorage.removeItem('selectedCards');
-              }}
-              onError={(error) => {
-                alert(`Erreur de paiement: ${error}`);
-              }}
-            />
-          ) : (
-            <button
-              onClick={() => router.push('/abonnements')}
-              className="bg-white text-blue-600 font-semibold px-8 py-4 rounded-lg hover:bg-blue-50 transition-colors text-lg shadow-lg"
-            >
-              Confirmer les abonnements
-            </button>
-          )}
+          <button
+            onClick={() => router.push('/abonnements')}
+            className="bg-white text-blue-600 font-semibold px-8 py-4 rounded-lg hover:bg-blue-50 transition-colors text-lg shadow-lg"
+          >
+            Confirmer les abonnements
+          </button>
         </div>
       </section>
 

@@ -80,7 +80,7 @@ export default function StripeCheckout({ items, customerEmail, onSuccess, onErro
   return (
     <button
       onClick={handleCheckout}
-      className="bg-white text-blue-600 font-semibold px-8 py-4 rounded-lg hover:bg-blue-50 transition-colors text-lg shadow-lg"
+      className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
     >
       Activer les abonnements
     </button>
