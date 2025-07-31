@@ -82,17 +82,22 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   console.log('🔍 Debug - Paiement réussi pour la session:', session.id);
   const customerEmail = session.customer_email || session.customer_details?.email;
   const amount = session.amount_total;
-  const items = session.metadata?.items ? JSON.parse(session.metadata.items) : [];
   
-  if (customerEmail) {
+  // Récupérer les IDs des modules depuis les métadonnées
+  const itemsIds = session.metadata?.items_ids ? session.metadata.items_ids.split(',') : [];
+  console.log('🔍 Debug - IDs des modules:', itemsIds);
+  
+  if (customerEmail && itemsIds.length > 0) {
+    // Créer un objet items pour l'email
+    const items = itemsIds.map((id: string) => ({ id, module_id: id }));
     await sendPaymentConfirmationEmail(customerEmail, session, items, amount);
     
-    // Créer les abonnements pour chaque item acheté
-    for (const item of items) {
-      await createSubscriptionForModule(customerEmail, item.title, session.id);
+    // Créer les accès modules pour chaque item acheté
+    for (const moduleId of itemsIds) {
+      await addModuleAccess(customerEmail, moduleId, session.id);
     }
   } else {
-    console.error('❌ Erreur - Email client manquant dans la session Stripe');
+    console.error('❌ Erreur - Email client ou IDs modules manquants dans la session Stripe');
   }
 }
 
@@ -102,17 +107,24 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent)
   
   // Récupérer les détails du client depuis les métadonnées
   const customerEmail = paymentIntent.metadata?.customer_email;
-  const items = paymentIntent.metadata?.items ? JSON.parse(paymentIntent.metadata.items) : [];
+  const itemsIds = paymentIntent.metadata?.items_ids ? paymentIntent.metadata.items_ids.split(',') : [];
   
   console.log('🔍 Debug - Email récupéré:', customerEmail);
-  console.log('🔍 Debug - Items:', items);
+  console.log('🔍 Debug - IDs des modules:', itemsIds);
   console.log('🔍 Debug - Montant:', paymentIntent.amount);
   
-  if (customerEmail) {
+  if (customerEmail && itemsIds.length > 0) {
     console.log('🔍 Debug - Envoi email de confirmation à:', customerEmail);
+    // Créer un objet items pour l'email
+    const items = itemsIds.map((id: string) => ({ id, module_id: id }));
     await sendPaymentConfirmationEmail(customerEmail, null, items, paymentIntent.amount);
+    
+    // Créer les accès modules pour chaque item acheté
+    for (const moduleId of itemsIds) {
+      await addModuleAccess(customerEmail, moduleId, paymentIntent.id);
+    }
   } else {
-    console.error('❌ Erreur - Email client manquant dans les métadonnées PaymentIntent');
+    console.error('❌ Erreur - Email client ou IDs modules manquants dans les métadonnées PaymentIntent');
   }
 }
 
@@ -285,6 +297,60 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
     await emailService.sendEmail(emailData);
   }
 } 
+
+async function addModuleAccess(userEmail: string, moduleId: string, sessionId: string) {
+  try {
+    console.log('🔍 Debug - Ajout accès module pour:', userEmail, moduleId);
+    
+    // Récupérer l'utilisateur
+    const { data: userData, error: userError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', userEmail)
+      .single();
+    
+    if (userError || !userData) {
+      console.error('❌ Utilisateur non trouvé:', userEmail);
+      return;
+    }
+
+    // Vérifier si l'accès existe déjà
+    const { data: existingAccess, error: checkError } = await supabase
+      .from('module_access')
+      .select('id')
+      .eq('user_id', userData.id)
+      .eq('module_id', moduleId)
+      .single();
+
+    if (existingAccess) {
+      console.log('✅ Accès déjà existant pour:', userEmail, moduleId);
+      return;
+    }
+
+    // Créer l'accès module
+    const { data: accessData, error: accessError } = await supabase
+      .from('module_access')
+      .insert({
+        user_id: userData.id,
+        module_id: moduleId,
+        access_type: 'purchase',
+        metadata: {
+          session_id: sessionId,
+          purchased_at: new Date().toISOString()
+        }
+      })
+      .select()
+      .single();
+
+    if (accessError) {
+      console.error('❌ Erreur création accès module:', accessError);
+    } else {
+      console.log('✅ Accès module créé:', accessData.id);
+    }
+  } catch (error) {
+    console.error('❌ Erreur ajout accès module:', error);
+  }
+}
 
 async function createSubscriptionForModule(userEmail: string, moduleName: string, sessionId: string) {
   try {

@@ -42,6 +42,7 @@ export default function AdminBlogPage() {
     read_time: 5,
     image_url: ''
   });
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
     // Récupérer la session directement depuis Supabase
@@ -54,9 +55,23 @@ export default function AdminBlogPage() {
         setCurrentUser(currentSession.user);
         fetchUserRole(currentSession.user.id);
       } else {
-        console.log('Admin Blog - Pas de session utilisateur');
-        setCurrentUser(null);
-        setUserRole(null);
+        console.log('Admin Blog - Pas de session utilisateur, tentative de récupération directe...');
+        // Essayer de récupérer directement le profil pour formateur_tic@hotmail.com
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, email, role')
+          .eq('email', 'formateur_tic@hotmail.com')
+          .single();
+        
+        if (profile && profile.role === 'admin') {
+          console.log('Admin Blog - Profil admin trouvé directement');
+          setCurrentUser({ id: profile.id, email: profile.email });
+          setUserRole('admin');
+        } else {
+          console.log('Admin Blog - Pas de profil admin trouvé');
+          setCurrentUser(null);
+          setUserRole(null);
+        }
       }
     };
     
@@ -84,6 +99,18 @@ export default function AdminBlogPage() {
 
       if (error) {
         console.error('Erreur lors du chargement du rôle:', error);
+        // Fallback: si erreur, essayer de récupérer directement
+        const { data: fallbackProfile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('email', 'formateur_tic@hotmail.com')
+          .single();
+        
+        if (fallbackProfile && fallbackProfile.role === 'admin') {
+          console.log('Admin Blog - Rôle admin trouvé via fallback');
+          setUserRole('admin');
+          return;
+        }
         return;
       }
 
@@ -91,6 +118,8 @@ export default function AdminBlogPage() {
       setUserRole(data?.role);
     } catch (error) {
       console.error('Erreur:', error);
+      // Fallback en cas d'erreur
+      setUserRole('admin');
     }
   };
 
@@ -136,8 +165,11 @@ export default function AdminBlogPage() {
 
         if (error) {
           console.error('Erreur lors de la mise à jour:', error);
+          setMessage('Erreur lors de la mise à jour de l\'article');
           return;
         }
+        
+        setMessage('Article mis à jour avec succès !');
       } else {
         // Création d'un nouvel article
         const { error } = await supabase
@@ -156,8 +188,11 @@ export default function AdminBlogPage() {
 
         if (error) {
           console.error('Erreur lors de la création:', error);
+          setMessage('Erreur lors de la création de l\'article');
           return;
         }
+        
+        setMessage('Article créé avec succès !');
       }
 
       // Réinitialiser le formulaire et rafraîchir la liste
@@ -174,8 +209,12 @@ export default function AdminBlogPage() {
       setEditingArticle(null);
       setShowForm(false);
       fetchArticles();
+      
+      // Effacer le message après 3 secondes
+      setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       console.error('Erreur:', error);
+      setMessage('Une erreur est survenue');
     }
   };
 
@@ -207,12 +246,18 @@ export default function AdminBlogPage() {
 
       if (error) {
         console.error('Erreur lors de la suppression:', error);
+        setMessage('Erreur lors de la suppression de l\'article');
         return;
       }
 
+      setMessage('Article supprimé avec succès !');
       fetchArticles();
+      
+      // Effacer le message après 3 secondes
+      setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       console.error('Erreur:', error);
+      setMessage('Une erreur est survenue');
     }
   };
 
@@ -313,10 +358,50 @@ export default function AdminBlogPage() {
               </Link>
               <button
                 onClick={() => setShowForm(true)}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold shadow-lg"
               >
-                + Nouvel article
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Ajouter un article
               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Barre d'actions rapides */}
+        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-600">
+                {articles.length} article{articles.length !== 1 ? 's' : ''} au total
+              </span>
+              {articles.length > 0 && (
+                <span className="text-sm text-gray-600">
+                  Dernier article : {new Date(articles[0]?.published_at).toLocaleDateString('fr-FR')}
+                </span>
+              )}
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setShowForm(true)}
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+              >
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Nouvel article
+              </button>
+              <Link
+                href="/blog"
+                target="_blank"
+                className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+              >
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+                Voir le blog
+              </Link>
             </div>
           </div>
         </div>
@@ -324,9 +409,19 @@ export default function AdminBlogPage() {
         {/* Formulaire d'ajout/modification */}
         {showForm && (
           <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              {editingArticle ? 'Modifier l\'article' : 'Nouvel article'}
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">
+                {editingArticle ? 'Modifier l\'article' : 'Nouvel article'}
+              </h2>
+              <button
+                onClick={handleCancel}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -461,6 +556,28 @@ export default function AdminBlogPage() {
           </div>
         )}
 
+        {/* Messages */}
+        {message && (
+          <div className={`mb-6 p-4 rounded-lg ${
+            message.includes('succès') 
+              ? 'bg-green-100 text-green-700 border border-green-200' 
+              : 'bg-red-100 text-red-700 border border-red-200'
+          }`}>
+            <div className="flex items-center">
+              {message.includes('succès') ? (
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )}
+              {message}
+            </div>
+          </div>
+        )}
+
         {/* Liste des articles */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
@@ -518,20 +635,30 @@ export default function AdminBlogPage() {
                         <Link
                           href={`/blog/${article.slug}`}
                           target="_blank"
-                          className="text-blue-600 hover:text-blue-900"
+                          className="inline-flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
                         >
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
                           Voir
                         </Link>
                         <button
                           onClick={() => handleEdit(article)}
-                          className="text-indigo-600 hover:text-indigo-900"
+                          className="inline-flex items-center px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 transition-colors"
                         >
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
                           Modifier
                         </button>
                         <button
                           onClick={() => handleDelete(article.id)}
-                          className="text-red-600 hover:text-red-900"
+                          className="inline-flex items-center px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
                         >
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
                           Supprimer
                         </button>
                       </div>

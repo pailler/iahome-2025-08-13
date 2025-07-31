@@ -51,25 +51,19 @@ export default function StripeCheckout({ items, customerEmail, onSuccess, onErro
         throw new Error(`Erreur HTTP ${response.status}: ${errorText}`);
       }
 
-      const { sessionId, error, details } = await response.json();
+      const { sessionId, url, error, details } = await response.json();
 
       if (error) {
         console.error('Erreur API:', { error, details });
         throw new Error(`Erreur API: ${error}`);
       }
 
-      // Rediriger vers Stripe Checkout
-      const stripe = await stripePromise;
-      if (stripe) {
-        const { error: stripeError } = await stripe.redirectToCheckout({
-          sessionId,
-        });
-
-        if (stripeError) {
-          throw new Error(stripeError.message);
-        }
+      // Rediriger vers Stripe Checkout en utilisant l'URL directe
+      if (url) {
+        console.log('🔗 Redirection vers Stripe Checkout:', url);
+        window.location.href = url;
       } else {
-        throw new Error('Impossible de charger Stripe.');
+        throw new Error('URL de session Stripe manquante.');
       }
     } catch (error) {
       console.error('Erreur lors du checkout:', error);
@@ -82,7 +76,7 @@ export default function StripeCheckout({ items, customerEmail, onSuccess, onErro
       onClick={handleCheckout}
       className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
     >
-      Activer les abonnements
+      Activer les sélections
     </button>
   );
 } 

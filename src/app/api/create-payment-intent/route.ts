@@ -1,15 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-06-30.basil',
-});
-
 export async function POST(request: NextRequest) {
   try {
     console.log('🔍 Debug - API create-payment-intent appelée');
+    
+    // Vérifier la clé Stripe
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error('❌ Erreur - STRIPE_SECRET_KEY manquante');
+      return NextResponse.json(
+        { error: 'Configuration Stripe manquante' },
+        { status: 500 }
+      );
+    }
+
     console.log('🔍 Debug - STRIPE_SECRET_KEY existe:', !!process.env.STRIPE_SECRET_KEY);
-    console.log('🔍 Debug - STRIPE_SECRET_KEY longueur:', process.env.STRIPE_SECRET_KEY?.length);
+    console.log('🔍 Debug - STRIPE_SECRET_KEY commence par:', process.env.STRIPE_SECRET_KEY?.substring(0, 7));
+
+    // Initialiser Stripe
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2025-06-30.basil',
+    });
     
     const body = await request.json();
     const { items, customerEmail, type } = body;
@@ -45,29 +56,50 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('🔍 Debug - Validation OK, création session...');
+    console.log('🔍 Debug - Montant total:', totalAmount);
+    console.log('🔍 Debug - Items:', items.map(item => ({ title: item.title, price: item.price })));
 
-    // Créer une session de paiement avec les métadonnées
+    // Vérifier l'URL de l'application
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:8021';
+    console.log('🔍 Debug - URL de l\'application:', appUrl);
+
+    // Préparer les métadonnées limitées (max 500 caractères)
+    const limitedItems = items.map((item: any) => ({
+      id: item.id,
+      title: item.title?.substring(0, 50) || 'Module IA', // Limiter le titre
+      price: item.price || 0
+    }));
+
+    const metadata = {
+      customer_email: customerEmail,
+      items_count: items.length.toString(),
+      total_amount: totalAmount.toString(),
+      type: type || 'payment',
+      // Stocker seulement les IDs des items pour éviter de dépasser la limite
+      items_ids: items.map((item: any) => item.id).join(',')
+    };
+
+    console.log('🔍 Debug - Métadonnées:', metadata);
+
+    // Créer une session de paiement avec les métadonnées limitées
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: items.map((item: any) => ({
         price_data: {
           currency: 'eur',
           product_data: {
-            name: item.title,
+            name: item.title || 'Module IA',
+            description: item.description?.substring(0, 100) || 'Module d\'intelligence artificielle',
           },
           unit_amount: Math.round((item.price || 0) * 100), // Convertir en centimes
         },
         quantity: 1,
       })),
       mode: type === 'subscription' ? 'subscription' : 'payment',
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:8021'}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:8021'}/cancel`,
+      success_url: `${appUrl}/abonnements?success=true`,
+      cancel_url: `${appUrl}/abonnements?canceled=true`,
       customer_email: customerEmail,
-      metadata: {
-        customer_email: customerEmail,
-        items: JSON.stringify(items),
-        type: type,
-      },
+      metadata: metadata,
     });
 
     console.log('🔍 Debug - Session créée:', session.id);
@@ -79,9 +111,24 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('❌ Erreur création session Stripe:', error);
-    console.error('❌ Détails erreur:', JSON.stringify(error, null, 2));
+    
+    // Log plus détaillé de l'erreur
+    if (error instanceof Error) {
+      console.error('❌ Message d\'erreur:', error.message);
+      console.error('❌ Stack trace:', error.stack);
+    }
+    
+    // Vérifier si c'est une erreur Stripe
+    if (error && typeof error === 'object' && 'type' in error) {
+      console.error('❌ Type d\'erreur Stripe:', (error as any).type);
+      console.error('❌ Code d\'erreur Stripe:', (error as any).code);
+    }
+    
     return NextResponse.json(
-      { error: 'Erreur lors de la création de la session' },
+      { 
+        error: 'Erreur lors de la création de la session',
+        details: error instanceof Error ? error.message : 'Erreur inconnue'
+      },
       { status: 500 }
     );
   }

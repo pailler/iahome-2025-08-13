@@ -63,25 +63,36 @@ export default function EncoursPage() {
     }
   }, [user]);
 
-  // Charger les abonnements actifs
+      // Charger les sélections actives
   useEffect(() => {
     const fetchActiveSubscriptions = async () => {
       if (!user?.id) return;
       
       try {
         setLoading(true);
-        console.log('🔍 Chargement des abonnements pour utilisateur:', user.id);
+        console.log('🔍 Chargement des sélections pour utilisateur:', user.id);
         
         const { data, error } = await supabase
-          .from('user_subscriptions')
-          .select('*')
+          .from('module_access')
+          .select(`
+            id,
+            created_at,
+            access_type,
+            expires_at,
+            metadata,
+            cartes!inner(
+              id,
+              title,
+              description,
+              category,
+              price
+            )
+          `)
           .eq('user_id', user.id)
-          .eq('status', 'active')
-          .gt('end_date', new Date().toISOString())
           .order('created_at', { ascending: false });
 
         if (error) {
-          console.error('❌ Erreur chargement abonnements:', error);
+          console.error('❌ Erreur chargement sélections:', error);
           console.error('Détails de l\'erreur:', {
             code: error.code,
             message: error.message,
@@ -95,10 +106,10 @@ export default function EncoursPage() {
         } else {
           setActiveSubscriptions(data || []);
           setError(null);
-          console.log('✅ Abonnements actifs chargés:', data);
+          console.log('✅ Sélections actives chargées:', data);
         }
       } catch (error) {
-        console.error('❌ Erreur exception chargement abonnements:', error);
+                  console.error('❌ Erreur exception chargement sélections:', error);
       } finally {
         setLoading(false);
       }
@@ -202,7 +213,7 @@ export default function EncoursPage() {
           <div className="text-center py-12">
             <div className="text-6xl mb-4">🔐</div>
             <h2 className="text-2xl font-semibold text-gray-900 mb-2">Connexion requise</h2>
-            <p className="text-gray-600 mb-6">Vous devez être connecté pour voir vos abonnements en cours.</p>
+            <p className="text-gray-600 mb-6">Vous devez être connecté pour voir vos sélections en cours.</p>
             <div className="flex gap-4 justify-center">
               <Link 
                 href="/login" 
@@ -240,7 +251,7 @@ export default function EncoursPage() {
                 href="/abonnements" 
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                Gérer les abonnements
+                Gérer les sélections
               </Link>
             </div>
           </div>
@@ -252,7 +263,7 @@ export default function EncoursPage() {
         {loading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Chargement de vos abonnements...</p>
+            <p className="text-gray-600">Chargement de vos sélections...</p>
           </div>
         ) : error ? (
           <div className="text-center py-12">
@@ -290,12 +301,12 @@ export default function EncoursPage() {
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                📊 Résumé de vos abonnements
+                📊 Résumé de vos sélections
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <div className="text-2xl font-bold text-blue-600">{activeSubscriptions.length}</div>
-                  <div className="text-sm text-gray-600">Abonnements actifs</div>
+                  <div className="text-sm text-gray-600">Sélections actives</div>
                 </div>
                 <div className="bg-green-50 p-4 rounded-lg">
                   <div className="text-2xl font-bold text-green-600">
@@ -305,7 +316,12 @@ export default function EncoursPage() {
                 </div>
                 <div className="bg-orange-50 p-4 rounded-lg">
                   <div className="text-2xl font-bold text-orange-600">
-                    {Math.min(...activeSubscriptions.map(sub => getDaysRemaining(sub.end_date)))}
+                    {activeSubscriptions.filter(access => access.expires_at).length > 0 
+                      ? Math.min(...activeSubscriptions
+                          .filter(access => access.expires_at)
+                          .map(access => getDaysRemaining(access.expires_at)))
+                      : '∞'
+                    }
                   </div>
                   <div className="text-sm text-gray-600">Jours restants (min)</div>
                 </div>
@@ -313,38 +329,54 @@ export default function EncoursPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {activeSubscriptions.map((subscription) => {
-                const daysRemaining = getDaysRemaining(subscription.end_date);
+              {activeSubscriptions.map((access) => {
+                const module = access.cartes;
+                const hasExpiration = access.expires_at;
+                const daysRemaining = hasExpiration ? getDaysRemaining(access.expires_at) : null;
                 
                 return (
-                  <div key={subscription.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                  <div key={access.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     <div className="p-6">
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-semibold text-gray-900">
-                          {subscription.module_name}
+                          {module.title}
                         </h3>
-                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                          daysRemaining <= 7 
-                            ? 'bg-red-100 text-red-700' 
-                            : daysRemaining <= 30 
-                              ? 'bg-orange-100 text-orange-700'
-                              : 'bg-green-100 text-green-700'
-                        }`}>
-                          {daysRemaining} jours
-                        </span>
+                        {hasExpiration ? (
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                            daysRemaining <= 7 
+                              ? 'bg-red-100 text-red-700' 
+                              : daysRemaining <= 30 
+                                ? 'bg-orange-100 text-orange-700'
+                                : 'bg-green-100 text-green-700'
+                          }`}>
+                            {daysRemaining} jours
+                          </span>
+                        ) : (
+                          <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                            Accès permanent
+                          </span>
+                        )}
                       </div>
 
                       <div className="space-y-3 mb-4">
                         <div className="text-sm text-gray-600">
-                          <span className="font-medium">Début :</span> {formatDate(subscription.start_date)}
+                          <span className="font-medium">Catégorie :</span> {module.category}
                         </div>
                         <div className="text-sm text-gray-600">
-                          <span className="font-medium">Fin :</span> {formatDate(subscription.end_date)}
+                          <span className="font-medium">Prix :</span> €{module.price}
                         </div>
                         <div className="text-sm text-gray-600">
-                          <span className="font-medium">Statut :</span> 
-                          <span className="ml-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
-                            Actif
+                          <span className="font-medium">Acheté le :</span> {formatDate(access.created_at)}
+                        </div>
+                        {hasExpiration && (
+                          <div className="text-sm text-gray-600">
+                            <span className="font-medium">Expire le :</span> {formatDate(access.expires_at)}
+                          </div>
+                        )}
+                        <div className="text-sm text-gray-600">
+                          <span className="font-medium">Type d'accès :</span> 
+                          <span className="ml-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+                            {access.access_type}
                           </span>
                         </div>
                       </div>
@@ -352,16 +384,16 @@ export default function EncoursPage() {
                       <button 
                         className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
                         onClick={async () => {
-                          const magicLink = await generateModuleMagicLink(subscription.module_name);
+                          const magicLink = await generateModuleMagicLink(module.title);
                           if (magicLink) {
                             window.open(magicLink, '_blank');
                           } else {
                             alert('Erreur lors de la génération du lien d\'accès');
                           }
                         }}
-                        title={`Accéder à ${subscription.module_name}`}
+                        title={`Accéder à ${module.title}`}
                       >
-                        🔗 Accéder à {subscription.module_name}
+                        🔗 Accéder à {module.title}
                       </button>
                     </div>
                   </div>

@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Créer l'URL de la page proxy qui gère l'authentification
-    const proxyUrl = `http://localhost:8021/proxy/${module}?token=${token}`;
+    const proxyUrl = `https://home.regispailler.fr/proxy/${module}?token=${token}`;
     
     console.log('✅ Redirection vers page proxy:', proxyUrl);
     console.log('🔐 Module:', module, 'avec authentification automatique');

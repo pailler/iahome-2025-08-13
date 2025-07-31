@@ -1,0 +1,140 @@
+# Configuration Traefik pour l'authentification automatique
+api:
+  dashboard: true
+  insecure: true
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entrypoint:
+          to: websecure
+          scheme: https
+  websecure:
+    address: ":443"
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: auth-network
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: your-email@domain.com
+      storage: /letsencrypt/acme.json
+      httpChallenge:
+        entryPoint: web
+
+# Middleware pour l'authentification automatique
+http:
+  middlewares:
+    auth-headers:
+      headers:
+        customRequestHeaders:
+          X-Auto-Auth: "your-secret-key-change-this"
+          Authorization: "Basic YWRtaW46UmFzdWxvdmE3NQ=="
+        customResponseHeaders:
+          X-Auto-Authenticated: "true"
+          X-Auto-Auth-User: "admin"
+    
+    # Middleware spécifique pour chaque service
+    sd-auth:
+      headers:
+        customRequestHeaders:
+          X-Auto-Auth: "your-secret-key-change-this"
+          Authorization: "Basic YWRtaW46UmFzdWxvdmE3NQ=="
+    
+    it-auth:
+      headers:
+        customRequestHeaders:
+          X-Auto-Auth: "your-secret-key-change-this"
+          Authorization: "Basic YWRtaW46UmFzdWxvdmE3NQ=="
+    
+    im-auth:
+      headers:
+        customRequestHeaders:
+          X-Auto-Auth: "your-secret-key-change-this"
+          Authorization: "Basic YWRtaW46UmFzdWxvdmE3NQ=="
+
+# Configuration des routes
+http:
+  routers:
+    # Route pour le service d'authentification
+    auth-service:
+      rule: "Host(`auth.regispailler.fr`)"
+      service: auth-service
+      entryPoints:
+        - web
+      tls:
+        certResolver: letsencrypt
+    
+    # Route pour Stable Diffusion
+    stablediffusion:
+      rule: "Host(`stablediffusion.regispailler.fr`)"
+      service: stablediffusion
+      entryPoints:
+        - web
+      middlewares:
+        - sd-auth
+      tls:
+        certResolver: letsencrypt
+    
+    # Route pour IA Tube
+    iatube:
+      rule: "Host(`iatube.regispailler.fr`)"
+      service: iatube
+      entryPoints:
+        - web
+      middlewares:
+        - it-auth
+      tls:
+        certResolver: letsencrypt
+    
+    # Route pour IA Metube
+    iametube:
+      rule: "Host(`iametube.regispailler.fr`)"
+      service: iametube
+      entryPoints:
+        - web
+      middlewares:
+        - im-auth
+      tls:
+        certResolver: letsencrypt
+
+# Configuration des services
+http:
+  services:
+    auth-service:
+      loadBalancer:
+        servers:
+          - url: "http://auth-service:8080"
+    
+    stablediffusion:
+      loadBalancer:
+        servers:
+          - url: "http://stablediffusion:7860"
+    
+    iatube:
+      loadBalancer:
+        servers:
+          - url: "http://iatube:7860"
+    
+    iametube:
+      loadBalancer:
+        servers:
+          - url: "http://iametube:7860"
+
+# Logging
+log:
+  level: INFO
+  format: json
+
+accessLog:
+  format: json
+  fields:
+    defaultMode: keep
+    headers:
+      defaultMode: keep 

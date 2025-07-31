@@ -171,8 +171,19 @@ export default function BlogPage() {
                 Découvrez nos articles sur l'intelligence artificielle, les outils, les ressources et les meilleures pratiques.
               </p>
             </div>
-                         <div className="flex-1 flex justify-end">
-             </div>
+            <div className="flex-1 flex justify-end">
+              {currentUser && userRole === 'admin' && (
+                <Link
+                  href="/admin/blog"
+                  className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium shadow-sm"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  Ajouter un article
+                </Link>
+              )}
+            </div>
           </div>
         </div>
 
@@ -292,9 +303,20 @@ export default function BlogPage() {
 
                  {filteredArticles.length === 0 && (
            <div className="text-center py-12">
-             <p className="text-gray-500 text-lg">
+             <p className="text-gray-500 text-lg mb-6">
                Aucun article trouvé pour cette catégorie.
              </p>
+             {currentUser && userRole === 'admin' && (
+               <Link
+                 href="/admin/blog"
+                 className="inline-flex items-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium shadow-sm"
+               >
+                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2">
+                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                 </svg>
+                 Créer le premier article
+               </Link>
+             )}
            </div>
          )}
 
@@ -387,6 +409,21 @@ export default function BlogPage() {
                  </svg>
                </Link>
              </div>
+           </div>
+         )}
+
+         {/* Bouton flottant pour ajouter un article (admin seulement) */}
+         {currentUser && userRole === 'admin' && (
+           <div className="fixed bottom-6 right-6 z-50">
+             <Link
+               href="/admin/blog"
+               className="inline-flex items-center justify-center w-14 h-14 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors shadow-lg hover:shadow-xl"
+               title="Ajouter un article"
+             >
+               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+               </svg>
+             </Link>
            </div>
          )}
        </div>

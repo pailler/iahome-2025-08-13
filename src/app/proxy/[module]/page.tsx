@@ -1,13 +1,16 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, use } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-export default function ProxyPage({ params }: { params: { module: string } }) {
+export default function ProxyPage({ params }: { params: Promise<{ module: string }> }) {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
   const [iframeUrl, setIframeUrl] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
+
+  // Unwrapper les paramètres avec React.use()
+  const { module } = use(params);
 
   useEffect(() => {
     if (!token) {
@@ -18,10 +21,23 @@ export default function ProxyPage({ params }: { params: { module: string } }) {
 
     const setupIframe = async () => {
       try {
-        console.log('🔍 Configuration de l\'iframe pour:', params.module);
+        console.log('🔍 Configuration de l\'iframe pour:', module);
         
-        // Vérifier que l'utilisateur a accès à ce module
-        const response = await fetch(`/api/check-subscription?module=${params.module}`, {
+        // Pour Stable Diffusion, on contourne la vérification d'abonnement
+        // car c'est un accès direct avec credentials
+        if (module === 'stablediffusion') {
+          console.log('🎨 Accès direct Stable Diffusion - pas de vérification d\'abonnement');
+          
+                     // Utiliser directement l'URL du proxy qui gère l'authentification
+           const proxyUrl = `https://home.regispailler.fr/api/proxy-module/?token=${token}&module=${module}`;
+          
+          console.log('✅ URL iframe configurée:', proxyUrl);
+          setIframeUrl(proxyUrl);
+          return;
+        }
+        
+        // Pour les autres modules, vérifier l'abonnement
+        const response = await fetch(`/api/check-subscription?module=${module}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -31,8 +47,8 @@ export default function ProxyPage({ params }: { params: { module: string } }) {
           throw new Error('Accès non autorisé à ce module');
         }
         
-        // Utiliser l'URL du proxy qui gère l'authentification
-        const proxyUrl = `http://localhost:8021/api/proxy-module/?token=${token}&module=${params.module}`;
+                 // Utiliser l'URL du proxy qui gère l'authentification
+         const proxyUrl = `https://home.regispailler.fr/api/proxy-module/?token=${token}&module=${module}`;
         
         console.log('✅ URL iframe configurée:', proxyUrl);
         setIframeUrl(proxyUrl);
@@ -46,14 +62,14 @@ export default function ProxyPage({ params }: { params: { module: string } }) {
     };
 
     setupIframe();
-  }, [token, params.module]);
+  }, [token, module]);
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement de {params.module}...</p>
+          <p className="text-gray-600">Chargement de {module}...</p>
         </div>
       </div>
     );
@@ -82,7 +98,7 @@ export default function ProxyPage({ params }: { params: { module: string } }) {
       <iframe
         src={iframeUrl}
         className="w-full h-full border-0"
-        title={`${params.module} - Interface utilisateur`}
+        title={`${module} - Interface utilisateur`}
         allow="fullscreen"
       />
     </div>

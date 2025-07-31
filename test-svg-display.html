@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Image SVG SDNext</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f0f2f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1e40af;
+            text-align: center;
+        }
+        .image-container {
+            margin: 20px 0;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .image-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+        .info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #3b82f6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Test Image SVG SDNext</h1>
+        
+        <div class="status info">
+            <strong>Test en cours :</strong> Affichage de l'image SVG SDNext
+        </div>
+
+        <div class="image-container">
+                         <img src="/images/sdnext-interface.svg" alt="Interface SDNext" onload="imageLoaded()" onerror="imageError()">
+        </div>
+
+        <div id="status" class="status">
+            Chargement de l'image...
+        </div>
+
+        <div class="status info">
+            <strong>Instructions :</strong>
+            <ul>
+                <li>Si l'image s'affiche correctement, l'image SVG fonctionne</li>
+                <li>Si l'image ne s'affiche pas, il y a un problème de chemin ou de serveur</li>
+                <li>Vérifiez que le serveur Next.js tourne sur le port 8021</li>
+            </ul>
+        </div>
+
+        <div class="status info">
+                         <strong>URL de test :</strong> <a href="/images/sdnext-interface.svg" target="_blank">http://localhost:8021/images/sdnext-interface.svg</a>
+        </div>
+    </div>
+
+    <script>
+        function imageLoaded() {
+            document.getElementById('status').innerHTML = '<strong>✅ Succès !</strong> L\'image SVG s\'affiche correctement.';
+            document.getElementById('status').className = 'status success';
+        }
+
+        function imageError() {
+            document.getElementById('status').innerHTML = '<strong>❌ Erreur !</strong> L\'image SVG ne peut pas être chargée. Vérifiez le chemin et le serveur.';
+            document.getElementById('status').className = 'status error';
+        }
+
+        // Test automatique après 3 secondes
+        setTimeout(() => {
+            const img = document.querySelector('img');
+            if (img.complete && img.naturalHeight !== 0) {
+                imageLoaded();
+            } else if (img.complete) {
+                imageError();
+            }
+        }, 3000);
+    </script>
+</body>
+</html> 

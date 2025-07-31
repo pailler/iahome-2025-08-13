@@ -62,7 +62,7 @@ export default function Home() {
     });
   }, [session, user]);
 
-  // Vérifier les abonnements actifs de l'utilisateur
+      // Vérifier les sélections actives de l'utilisateur
   useEffect(() => {
     const checkUserSubscriptions = async () => {
       if (!user?.id) return;
@@ -81,10 +81,10 @@ export default function Home() {
             subscriptions[sub.module_name] = true;
           });
           setUserSubscriptions(subscriptions);
-          console.log('✅ Abonnements actifs:', subscriptions);
+          console.log('✅ Sélections actives:', subscriptions);
         }
       } catch (error) {
-        console.error('Erreur vérification abonnements:', error);
+        console.error('Erreur vérification sélections:', error);
       }
     };
 
@@ -228,63 +228,49 @@ export default function Home() {
 
   // Fonction pour obtenir l'URL d'accès d'un module
   const getModuleAccessUrl = async (moduleName: string) => {
-    const moduleUrls: { [key: string]: string } = {
-      'IAmetube': 'https://metube.regispailler.fr',
-      'iatube': 'https://metube.regispailler.fr', // Redirection vers Metube pour iatube
-      'stablediffusion': 'https://stablediffusion.regispailler.fr', // Redirection vers StableDiffusion
+    console.log('🔐 getModuleAccessUrl appelée pour:', moduleName);
+    
+    // Mapping des modules vers leurs pages d'accès sécurisées
+    const secureModuleUrls: { [key: string]: string } = {
+      'stablediffusion': '/stablediffusion-iframe-secure', // Nouvelle interface iframe sécurisée
+      'iatube': '/secure-module-access?module=iatube',
+      'IAmetube': '/secure-module-access?module=IAmetube',
       // Ajouter d'autres modules ici quand ils seront disponibles
-      // 'IAphoto': 'https://iaphoto.regispailler.fr',
-      // 'IAvideo': 'https://iavideo.regispailler.fr',
+      // 'IAphoto': '/secure-module-access?module=IAphoto',
+      // 'IAvideo': '/secure-module-access?module=IAvideo',
     };
     
-    // Si c'est le module iatube ou stablediffusion, créer un magic link et rediriger
-    if ((moduleName === 'iatube' || moduleName === 'stablediffusion') && user?.id) {
-      try {
-        console.log(`🔍 Création magic link pour ${moduleName}...`);
-        console.log('🔍 User ID:', user.id);
-        console.log('🔍 User email:', user.email);
-        
-        // Créer un magic link pour le module
-        const requestBody = {
-          userId: user.id,
-          subscriptionId: `${moduleName}-sub-789`,
-          moduleName: moduleName,
-          userEmail: user.email,
-          redirectUrl: moduleUrls[moduleName]
-        };
-        
-        console.log('🔍 Request body:', requestBody);
-        
-        const response = await fetch('/api/create-magic-link', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestBody),
-        });
-
-        console.log('🔍 Response status:', response.status);
-        
-        if (response.ok) {
-          const responseData = await response.json();
-          console.log('🔍 Response data:', responseData);
-          const token = responseData.data?.token || responseData.token;
-          console.log('🔍 Token extrait:', token);
-          // Rediriger vers l'API proxy-access qui inclut les credentials
-          const accessUrl = `http://localhost:8021/api/proxy-access?token=${token}&module=${moduleName}`;
-          console.log('🔍 Access URL avec credentials:', accessUrl);
-          window.open(accessUrl, '_blank');
-          return null; // Pas de redirection directe
-        } else {
-          const errorData = await response.json();
-          console.error('❌ Erreur API:', errorData);
-        }
-      } catch (error) {
-        console.error('❌ Erreur lors de la création du magic link:', error);
-      }
+    // Vérifier si l'utilisateur est connecté
+    if (!user?.id) {
+      console.log('❌ Utilisateur non connecté, redirection vers login');
+      router.push('/login');
+      return null;
     }
     
-    return moduleUrls[moduleName] || null;
+    // Vérifier si l'utilisateur a un abonnement actif pour ce module
+    const hasSubscription = userSubscriptions[moduleName.toLowerCase()];
+    console.log('🔍 Vérification abonnement:', { moduleName, hasSubscription, userSubscriptions });
+    
+    // Temporairement, permettre l'accès à Stable Diffusion même sans abonnement vérifié
+    if (!hasSubscription && moduleName.toLowerCase() !== 'stablediffusion') {
+      console.log(`❌ Aucun abonnement actif pour ${moduleName}`);
+      router.push(`/abonnements?module=${moduleName.toLowerCase()}`);
+      return null;
+    }
+    
+    console.log(`✅ Accès autorisé pour ${moduleName}, redirection vers la page sécurisée`);
+    
+    // Rediriger vers la page d'accès sécurisé appropriée
+    const secureUrl = secureModuleUrls[moduleName];
+    console.log('🎯 URL de redirection:', secureUrl);
+    if (secureUrl) {
+      console.log('🚀 Redirection vers:', secureUrl);
+      router.push(secureUrl);
+      return null;
+    }
+    
+    // Fallback pour les modules non configurés
+    return `/secure-module-access?module=${moduleName.toLowerCase()}`;
   };
 
   // Obtenir toutes les catégories uniques depuis les cartes
@@ -441,6 +427,335 @@ export default function Home() {
     return levels[Math.floor(Math.random() * levels.length)];
   };
 
+  // Fonction pour obtenir les propriétés d'image en rapport avec le nom de la carte
+  const getCardImageProps = (cardTitle: string) => {
+    const title = cardTitle.toLowerCase();
+    
+    // Mapping des cartes vers des visuels générés par IA
+    const imageMapping: { [key: string]: { bgColor: string; icon: string; text: string; imageUrl: string } } = {
+      'cogstudio': { 
+        bgColor: 'bg-red-500', 
+        icon: '🎬', 
+        text: 'Vidéo IA',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'psitransfer': { 
+        bgColor: 'bg-blue-500', 
+        icon: '📁', 
+        text: 'Transfert',
+        imageUrl: 'https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=400&h=225&fit=crop&auto=format'
+      },
+      'stablediffusion': { 
+        bgColor: 'bg-purple-600', 
+        icon: '🎨', 
+        text: 'IA Générative',
+        imageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=225&fit=crop&auto=format'
+      },
+      'iatube': { 
+        bgColor: 'bg-red-500', 
+        icon: '📺', 
+        text: 'Vidéo',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'iametube': { 
+        bgColor: 'bg-red-500', 
+        icon: '📺', 
+        text: 'Vidéo',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'iaphoto': { 
+        bgColor: 'bg-green-500', 
+        icon: '📷', 
+        text: 'Photo',
+        imageUrl: 'https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=400&h=225&fit=crop&auto=format'
+      },
+      'iavideo': { 
+        bgColor: 'bg-red-500', 
+        icon: '🎬', 
+        text: 'Vidéo',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'pdf+': { 
+        bgColor: 'bg-orange-500', 
+        icon: '📄', 
+        text: 'Documents',
+        imageUrl: 'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=400&h=225&fit=crop&auto=format'
+      },
+      'chatgpt': { 
+        bgColor: 'bg-indigo-600', 
+        icon: '🤖', 
+        text: 'Assistant IA',
+        imageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=225&fit=crop&auto=format'
+      },
+      'midjourney': { 
+        bgColor: 'bg-purple-600', 
+        icon: '🎨', 
+        text: 'IA Générative',
+        imageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=225&fit=crop&auto=format'
+      },
+      'dall-e': { 
+        bgColor: 'bg-purple-600', 
+        icon: '🎨', 
+        text: 'IA Générative',
+        imageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=225&fit=crop&auto=format'
+      },
+      'canva': { 
+        bgColor: 'bg-green-500', 
+        icon: '🎨', 
+        text: 'Design',
+        imageUrl: 'https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=400&h=225&fit=crop&auto=format'
+      },
+      'figma': { 
+        bgColor: 'bg-green-500', 
+        icon: '🎨', 
+        text: 'Design',
+        imageUrl: 'https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=400&h=225&fit=crop&auto=format'
+      },
+      'notion': { 
+        bgColor: 'bg-orange-500', 
+        icon: '📝', 
+        text: 'Productivité',
+        imageUrl: 'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=400&h=225&fit=crop&auto=format'
+      },
+      'slack': { 
+        bgColor: 'bg-blue-500', 
+        icon: '💬', 
+        text: 'Communication',
+        imageUrl: 'https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=400&h=225&fit=crop&auto=format'
+      },
+      'discord': { 
+        bgColor: 'bg-blue-500', 
+        icon: '💬', 
+        text: 'Communication',
+        imageUrl: 'https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=400&h=225&fit=crop&auto=format'
+      },
+      'zoom': { 
+        bgColor: 'bg-blue-500', 
+        icon: '📹', 
+        text: 'Visioconférence',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'teams': { 
+        bgColor: 'bg-blue-500', 
+        icon: '👥', 
+        text: 'Collaboration',
+        imageUrl: 'https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=400&h=225&fit=crop&auto=format'
+      },
+      'google': { 
+        bgColor: 'bg-indigo-600', 
+        icon: '🔍', 
+        text: 'Recherche',
+        imageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=225&fit=crop&auto=format'
+      },
+      'microsoft': { 
+        bgColor: 'bg-indigo-600', 
+        icon: '💼', 
+        text: 'Bureautique',
+        imageUrl: 'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=400&h=225&fit=crop&auto=format'
+      },
+      'adobe': { 
+        bgColor: 'bg-green-500', 
+        icon: '🎨', 
+        text: 'Création',
+        imageUrl: 'https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=400&h=225&fit=crop&auto=format'
+      },
+      'autocad': { 
+        bgColor: 'bg-green-500', 
+        icon: '📐', 
+        text: 'CAO',
+        imageUrl: 'https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=400&h=225&fit=crop&auto=format'
+      },
+      'blender': { 
+        bgColor: 'bg-purple-600', 
+        icon: '🎬', 
+        text: '3D',
+        imageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=225&fit=crop&auto=format'
+      },
+      'unity': { 
+        bgColor: 'bg-purple-600', 
+        icon: '🎮', 
+        text: 'Gaming',
+        imageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=225&fit=crop&auto=format'
+      },
+      'unreal': { 
+        bgColor: 'bg-purple-600', 
+        icon: '🎮', 
+        text: 'Gaming',
+        imageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=225&fit=crop&auto=format'
+      },
+      'photoshop': { 
+        bgColor: 'bg-green-500', 
+        icon: '🖼️', 
+        text: 'Édition',
+        imageUrl: 'https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=400&h=225&fit=crop&auto=format'
+      },
+      'illustrator': { 
+        bgColor: 'bg-green-500', 
+        icon: '✏️', 
+        text: 'Vectoriel',
+        imageUrl: 'https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=400&h=225&fit=crop&auto=format'
+      },
+      'premiere': { 
+        bgColor: 'bg-red-500', 
+        icon: '🎬', 
+        text: 'Montage',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'after effects': { 
+        bgColor: 'bg-red-500', 
+        icon: '🎬', 
+        text: 'Effets',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'audition': { 
+        bgColor: 'bg-red-500', 
+        icon: '🎵', 
+        text: 'Audio',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'logic': { 
+        bgColor: 'bg-red-500', 
+        icon: '🎵', 
+        text: 'MAO',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'ableton': { 
+        bgColor: 'bg-red-500', 
+        icon: '🎵', 
+        text: 'MAO',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'fl studio': { 
+        bgColor: 'bg-red-500', 
+        icon: '🎵', 
+        text: 'MAO',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'pro tools': { 
+        bgColor: 'bg-red-500', 
+        icon: '🎵', 
+        text: 'MAO',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'cubase': { 
+        bgColor: 'bg-red-500', 
+        icon: '🎵', 
+        text: 'MAO',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'reason': { 
+        bgColor: 'bg-red-500', 
+        icon: '🎵', 
+        text: 'MAO',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'bitwig': { 
+        bgColor: 'bg-red-500', 
+        icon: '🎵', 
+        text: 'MAO',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'reaper': { 
+        bgColor: 'bg-red-500', 
+        icon: '🎵', 
+        text: 'MAO',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'garageband': { 
+        bgColor: 'bg-red-500', 
+        icon: '🎵', 
+        text: 'MAO',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'protools': { 
+        bgColor: 'bg-red-500', 
+        icon: '🎵', 
+        text: 'MAO',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'flstudio': { 
+        bgColor: 'bg-red-500', 
+        icon: '🎵', 
+        text: 'MAO',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'abletonlive': { 
+        bgColor: 'bg-red-500', 
+        icon: '🎵', 
+        text: 'MAO',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'logicpro': { 
+        bgColor: 'bg-red-500', 
+        icon: '🎵', 
+        text: 'MAO',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'cubasepro': { 
+        bgColor: 'bg-red-500', 
+        icon: '🎵', 
+        text: 'MAO',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'reasonstudio': { 
+        bgColor: 'bg-red-500', 
+        icon: '🎵', 
+        text: 'MAO',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'bitwigstudio': { 
+        bgColor: 'bg-red-500', 
+        icon: '🎵', 
+        text: 'MAO',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'reaperda': { 
+        bgColor: 'bg-red-500', 
+        icon: '🎵', 
+        text: 'MAO',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+      'garagebandmac': { 
+        bgColor: 'bg-red-500', 
+        icon: '🎵', 
+        text: 'MAO',
+        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
+      },
+    };
+
+    // Chercher une correspondance exacte ou partielle
+    for (const [key, props] of Object.entries(imageMapping)) {
+      if (title.includes(key)) {
+        return props;
+      }
+    }
+
+    // Images par défaut selon la catégorie
+    const defaultImages = {
+      'ia assistant': { bgColor: 'bg-indigo-600', icon: '🤖', text: 'Assistant IA', imageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=225&fit=crop&auto=format' },
+      'ia photo': { bgColor: 'bg-green-500', icon: '📷', text: 'IA Photo', imageUrl: 'https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=400&h=225&fit=crop&auto=format' },
+      'ia video': { bgColor: 'bg-red-500', icon: '🎬', text: 'IA Vidéo', imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format' },
+      'ia mao': { bgColor: 'bg-red-500', icon: '🎵', text: 'IA MAO', imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format' },
+      'ia design': { bgColor: 'bg-green-500', icon: '🎨', text: 'IA Design', imageUrl: 'https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=400&h=225&fit=crop&auto=format' },
+      'ia marketing': { bgColor: 'bg-indigo-600', icon: '📊', text: 'IA Marketing', imageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=225&fit=crop&auto=format' },
+      'ia prompts': { bgColor: 'bg-indigo-600', icon: '💡', text: 'IA Prompts', imageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=225&fit=crop&auto=format' },
+      'ia bureautique': { bgColor: 'bg-orange-500', icon: '📄', text: 'IA Bureautique', imageUrl: 'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=400&h=225&fit=crop&auto=format' },
+    };
+
+    // Chercher par catégorie
+    for (const [category, props] of Object.entries(defaultImages)) {
+      if (title.includes(category)) {
+        return props;
+      }
+    }
+
+    // Image par défaut générique
+    return { bgColor: 'bg-indigo-600', icon: '🤖', text: 'Module IA', imageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=225&fit=crop&auto=format' };
+  };
+
+  // Fonction pour obtenir l'image source d'une carte
+
+
   const handleSaveCard = async (cardData: any) => {
     try {
       console.log('=== SAUVEGARDE CARTE ===');
@@ -528,7 +843,7 @@ export default function Home() {
     <div className="min-h-screen bg-blue-50 font-sans">
       {/* En-tête (Header) */}
       <header className="w-full bg-white shadow-sm border-b border-gray-100 mt-10">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-7xl mx-auto px-6 py-2">
           <div className="flex items-center justify-between">
             {/* Logo et navigation */}
             <div className="flex items-center space-x-8">
@@ -546,16 +861,12 @@ export default function Home() {
                  <a href="#" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">Communauté</a>
                  <a href="#" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">Exemples</a>
                  <Link href="/blog" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">Blog</Link>
-                 {session && (
-                   <Link href="/encours" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
-                     📦 Mes Modules
-                   </Link>
-                 )}
                </nav>
             </div>
             
             {/* Boutons à droite */}
             <div className="flex items-center space-x-4">
+              
               {!session ? (
                 <>
                                      <button className="text-gray-700 font-medium px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors">
@@ -570,6 +881,29 @@ export default function Home() {
                 </>
               ) : (
                 <div className="flex items-center space-x-3">
+                  {/* Bouton de test pour Stable Diffusion */}
+                  <button 
+                    onClick={async () => {
+                      console.log('🔍 Clic sur le bouton Stable Diffusion');
+                      console.log('👤 Utilisateur:', user?.email);
+                      console.log('🆔 User ID:', user?.id);
+                      console.log('🔐 Session:', session ? 'Active' : 'Inactive');
+                      
+                      if (!user?.id) {
+                        console.log('❌ Utilisateur non connecté, redirection vers login');
+                        router.push('/login');
+                        return;
+                      }
+                      
+                      console.log('✅ Utilisateur connecté, génération de l\'URL d\'accès...');
+                      await getModuleAccessUrl('stablediffusion');
+                    }}
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold px-4 py-2 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-300 flex items-center space-x-2 text-sm"
+                  >
+                    <span>🎨</span>
+                    <span>Stable Diffusion</span>
+                  </button>
+                  
                   <span className="text-sm text-gray-600">{user?.email}</span>
                   <div className={`px-3 py-1 rounded-full text-xs font-bold ${
                     role === 'admin' 
@@ -578,6 +912,13 @@ export default function Home() {
                   }`}>
                     {role === 'admin' ? 'ADMIN' : 'USER'}
                   </div>
+                  
+                  <Link 
+                    href="/encours" 
+                    className="text-gray-700 font-medium px-3 py-1 rounded hover:bg-gray-100 text-sm transition-colors"
+                  >
+                    📦 Mes Modules
+                  </Link>
                   
                   <button 
                     className="text-gray-700 font-medium px-3 py-1 rounded hover:bg-gray-100 text-sm" 
@@ -596,15 +937,15 @@ export default function Home() {
       </header>
 
       {/* Section héros */}
-      <section className="bg-white py-20">
+      <section className="bg-white py-12">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-12">
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
             {/* Contenu texte */}
             <div className="flex-1 max-w-2xl">
-              <h1 className="text-5xl lg:text-6xl font-bold text-blue-900 leading-tight mb-6">
+              <h1 className="text-4xl lg:text-5xl font-bold text-blue-900 leading-tight mb-4">
                 Accès direct à la puissance et aux outils IA
               </h1>
-              <p className="text-xl text-gray-600 mb-8">
+              <p className="text-lg text-gray-600 mb-6">
                 Boostez votre productivité dès maintenant
               </p>
               
@@ -626,22 +967,24 @@ export default function Home() {
                    Rechercher
                  </button>
               </div>
+              
+
             </div>
             
             {/* Illustration */}
             <div className="flex-1 flex justify-center">
-              <div className="relative w-96 h-80">
+              <div className="relative w-80 h-64">
                 {/* Formes géométriques abstraites */}
-                <div className="absolute top-0 left-0 w-32 h-32 bg-red-400 rounded-full opacity-70 animate-pulse"></div>
-                <div className="absolute top-20 right-0 w-24 h-24 bg-blue-400 rounded-lg opacity-70 animate-bounce"></div>
-                <div className="absolute bottom-0 left-20 w-28 h-28 bg-yellow-400 transform rotate-45 opacity-70 animate-pulse"></div>
-                <div className="absolute bottom-20 right-20 w-20 h-20 bg-green-400 rounded-full opacity-70 animate-bounce"></div>
+                <div className="absolute top-0 left-0 w-24 h-24 bg-red-400 rounded-full opacity-70 animate-pulse"></div>
+                <div className="absolute top-16 right-0 w-20 h-20 bg-blue-400 rounded-lg opacity-70 animate-bounce"></div>
+                <div className="absolute bottom-0 left-16 w-20 h-20 bg-yellow-400 transform rotate-45 opacity-70 animate-pulse"></div>
+                <div className="absolute bottom-16 right-16 w-16 h-16 bg-green-400 rounded-full opacity-70 animate-bounce"></div>
                 
                 {/* Éléments centraux */}
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
-                    <div className="text-6xl font-bold text-blue-900/20 mb-4">AI</div>
-                    <div className="text-sm text-gray-500">Intelligence Artificielle</div>
+                    <div className="text-5xl font-bold text-blue-900/20 mb-3">AI</div>
+                    <div className="text-xs text-gray-500">Intelligence Artificielle</div>
                   </div>
                 </div>
               </div>
@@ -719,67 +1062,23 @@ export default function Home() {
                           </svg>
                           Ajouter
                         </button>
-                        
-                        {/* Bouton de test pour créer la carte iatube */}
-                        <button 
-                          onClick={async () => {
-                            try {
-                              const cardData = {
-                                title: 'iatube',
-                                description: 'Module de test pour redirection vers Google via magic link',
-                                category: 'IA VIDEO',
-                                price: 0,
-                                youtube_url: 'https://www.youtube.com/embed/dQw4w9WgXcQ'
-                              };
-                              
-                              const { data, error } = await supabase
-                                .from('cartes')
-                                .insert([cardData])
-                                .select();
-                              
-                              if (error) {
-                                console.error('Erreur:', error);
-                                alert('Erreur lors de l\'ajout de la carte iatube');
-                              } else {
-                                console.log('Carte iatube ajoutée:', data);
-                                alert('Carte iatube ajoutée avec succès !');
-                                // Recharger les cartes
-                                const { data: cardsData } = await supabase.from('cartes').select('*');
-                                if (cardsData) {
-                                  const cardsWithRoles = cardsData.map(card => ({
-                                    ...card,
-                                    category: card.category || 'Non classé',
-                                    role: getRandomRole(),
-                                    usage_count: Math.floor(Math.random() * 1000) + 1,
-                                    experience_level: getRandomExperienceLevel()
-                                  }));
-                                  setCards(cardsWithRoles);
-                                }
-                              }
-                            } catch (error) {
-                              console.error('Erreur:', error);
-                              alert('Erreur lors de l\'ajout de la carte iatube');
-                            }
-                          }}
-                          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                        >
-                          🧪 Ajouter iatube
-                        </button>
                       </>
                     )}
                     
-                                         <select 
-                       className="px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                       value={sortBy}
-                       onChange={(e) => setSortBy(e.target.value)}
-                     >
-                       <option value="most_used">Trier par : Plus installés</option>
-                       <option value="least_used">Trier par : Moins installés</option>
-                       <option value="price_high">Trier par : Prix élevé à bas</option>
-                       <option value="price_low">Trier par : Prix bas à élevé</option>
-                       <option value="name_az">Trier par : Nom A-Z</option>
-                       <option value="name_za">Trier par : Nom Z-A</option>
-                     </select>
+
+                    
+                    <select 
+                      className="px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                    >
+                      <option value="most_used">Trier par : Plus installés</option>
+                      <option value="least_used">Trier par : Moins installés</option>
+                      <option value="price_high">Trier par : Prix élevé à bas</option>
+                      <option value="price_low">Trier par : Prix bas à élevé</option>
+                      <option value="name_az">Trier par : Nom A-Z</option>
+                      <option value="name_za">Trier par : Nom Z-A</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -793,6 +1092,11 @@ export default function Home() {
                 ) : filteredAndSortedCards.length === 0 ? (
                   <div className="col-span-full text-center py-12">
                     <div className="text-gray-500">Aucun template trouvé pour "{search}"</div>
+                  </div>
+                ) : currentCards.length === 0 ? (
+                  <div className="col-span-full text-center py-12">
+                    <div className="text-gray-500">Aucune carte à afficher (currentCards vide)</div>
+                    <div className="text-sm text-gray-400 mt-2">Total cartes: {filteredAndSortedCards.length}</div>
                   </div>
                 ) : (
                   currentCards.map((card) => (
@@ -827,28 +1131,62 @@ export default function Home() {
                           )}
                         </div>
                         
-                        <h3 className="text-lg font-semibold text-blue-900 mb-2">{card.title}</h3>
+                        <Link href={`/card/${card.id}`}>
+                          <h3 className="text-lg font-semibold text-blue-900 mb-2 hover:text-blue-700 cursor-pointer transition-colors">{card.title}</h3>
+                        </Link>
                         <p className="text-sm text-gray-600 mb-4">{card.description}</p>
                       </div>
 
-                      {/* Vidéo YouTube */}
-                      <div className="w-full aspect-video bg-gray-100">
-                        {card.youtube_url ? (
-                          <iframe
-                            className="w-full h-full"
-                            src={card.youtube_url}
-                            title={`${card.title} - YouTube video`}
-                            frameBorder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                          ></iframe>
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-12 h-12">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" />
-                            </svg>
-                          </div>
-                        )}
+
+
+                      {/* Visuel généré par IA selon le module */}
+                      <div className="w-full aspect-video rounded-lg border border-gray-200 overflow-hidden mb-4">
+                                                {(() => {
+                          const title = card.title.toLowerCase();
+                          const category = card.category.toLowerCase();
+                          let imageSrc = '';
+                          
+                          // Mapping spécifique pour certaines cartes
+                          if (title.includes('stablediffusion') || title.includes('sdnext')) {
+                            imageSrc = '/images/stablediffusion.jpg';
+                          } else if (title.includes('iatube') || title.includes('iametube')) {
+                            imageSrc = '/images/iatube.jpg';
+                          } else if (title.includes('iaphoto')) {
+                            imageSrc = '/images/iaphoto.jpg';
+                          } else if (title.includes('chatgpt') || title.includes('gpt')) {
+                            imageSrc = '/images/chatgpt.jpg';
+                          } else if (title.includes('pdf') || title.includes('document')) {
+                            imageSrc = '/images/pdf-plus.jpg';
+                          } else if (title.includes('psitransfer') || title.includes('transfer')) {
+                            imageSrc = '/images/psitransfer.jpg';
+                          } else {
+                            // Attribution d'images par catégorie pour toutes les autres cartes
+                            if (category.includes('video')) {
+                              imageSrc = '/images/iatube.jpg';
+                            } else if (category.includes('photo')) {
+                              imageSrc = '/images/iaphoto.jpg';
+                            } else if (category.includes('assistant') || category.includes('ai')) {
+                              imageSrc = '/images/chatgpt.jpg';
+                            } else if (category.includes('bureautique') || category.includes('document')) {
+                              imageSrc = '/images/pdf-plus.jpg';
+                            } else if (category.includes('design') || category.includes('marketing')) {
+                              imageSrc = '/images/stablediffusion.jpg';
+                            } else if (category.includes('mao') || category.includes('audio')) {
+                              imageSrc = '/images/psitransfer.jpg';
+                            } else {
+                              // Image par défaut pour les autres catégories
+                              imageSrc = '/images/chatgpt.jpg';
+                            }
+                          }
+                          
+                          return (
+                            <img
+                              src={imageSrc}
+                              alt={`Interface ${card.title}`}
+                              className="w-full h-full object-cover"
+                            />
+                          );
+                        })()}
                       </div>
 
                       {/* Pied de carte */}
@@ -916,7 +1254,7 @@ export default function Home() {
                               }`}
                               onClick={() => handleSubscribe(card)}
                             >
-                              {isCardSelected(card.id) ? 'Abonné' : 'S\'abonner'}
+                              {isCardSelected(card.id) ? 'Sélectionné' : 'Choisir'}
                             </button>
                           </div>
                         </div>
@@ -995,11 +1333,11 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Section Confirmer les abonnements */}
+              {/* Section Confirmer la(es) sélection(s) */}
       <section className="bg-blue-600 py-16">
         <div className="max-w-7xl mx-auto px-6 text-center">
           <h2 className="text-3xl font-bold text-white mb-4">
-            Prêt à activer vos abonnements ?
+            Prêt à activer vos sélections ?
           </h2>
           <p className="text-blue-100 mb-8 text-lg">
             Confirmez vos sélections et accédez à tous les outils IA
@@ -1008,7 +1346,7 @@ export default function Home() {
             onClick={() => router.push('/abonnements')}
             className="bg-white text-blue-600 font-semibold px-8 py-4 rounded-lg hover:bg-blue-50 transition-colors text-lg shadow-lg"
           >
-            Confirmer les abonnements
+            Confirmer la(es) sélection(s)
           </button>
         </div>
       </section>

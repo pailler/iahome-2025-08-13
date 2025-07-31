@@ -61,7 +61,7 @@ export default function SubscriptionsPage() {
     }
   }, [user]);
 
-  // Vérifier les abonnements actifs de l'utilisateur
+      // Vérifier les sélections actives de l'utilisateur
   useEffect(() => {
     const checkUserSubscriptions = async () => {
       if (!user?.id) return;
@@ -80,10 +80,10 @@ export default function SubscriptionsPage() {
             subscriptions[sub.module_name] = true;
           });
           setUserSubscriptions(subscriptions);
-          console.log('✅ Abonnements actifs:', subscriptions);
+          console.log('✅ Sélections actives:', subscriptions);
         }
       } catch (error) {
-        console.error('Erreur vérification abonnements:', error);
+        console.error('Erreur vérification sélections:', error);
       }
     };
 
@@ -143,12 +143,12 @@ export default function SubscriptionsPage() {
           </div>
         </div>
         <div className="bg-white p-8 rounded shadow w-full max-w-2xl">
-          <h2 className="text-2xl font-bold text-blue-900 mb-4">Mes abonnements</h2>
+          <h2 className="text-2xl font-bold text-blue-900 mb-4">Mes sélections</h2>
           
           {/* Affichage du statut de paiement */}
           {paymentStatus === 'success' && (
             <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
-              ✅ Paiement réussi ! Vos abonnements ont été confirmés.
+              ✅ Paiement réussi ! Vos sélections ont été confirmées.
             </div>
           )}
           
@@ -207,16 +207,16 @@ export default function SubscriptionsPage() {
                 ))}
               </ul>
               
-              {/* Total des abonnements */}
+              {/* Total des sélections */}
               <div className="border-t border-blue-200 pt-6">
                 <div className="flex justify-between items-center mb-4">
-                  <span className="text-lg font-semibold text-blue-900">Total des abonnements :</span>
+                  <span className="text-lg font-semibold text-blue-900">Total des sélections :</span>
                   <span className="text-2xl font-bold text-blue-900">
                     {cards.reduce((total, card) => total + (card.price || 0), 0)} €
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-sm text-blue-900/70 mb-4">
-                  <span>{cards.length} abonnement{cards.length > 1 ? 's' : ''}</span>
+                  <span>{cards.length} sélection{cards.length > 1 ? 's' : ''}</span>
                   <span>Prix total</span>
                 </div>
                 <div className="flex gap-3">
@@ -252,10 +252,10 @@ export default function SubscriptionsPage() {
                     onClick={() => {
                       localStorage.removeItem('selectedCards');
                       setCards([]);
-                      alert('Abonnements vidés !');
+                      alert('Sélections vidées !');
                     }}
                   >
-                    Vider mes abonnements
+                    Vider mes sélections
                   </button>
                 </div>
               </div>
@@ -273,19 +273,19 @@ export default function SubscriptionsPage() {
           <Link href="/" className="text-blue-600 hover:text-blue-700 font-semibold">
             ← Retour à l'accueil
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900">🛒 Gestion des Abonnements</h1>
+          <h1 className="text-2xl font-bold text-gray-900">🛒 Gestion des Sélections</h1>
         </div>
         <div className="flex items-center space-x-4">
           <Link 
             href="/encours" 
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
           >
-            📦 Voir mes abonnements actifs
+            📦 Voir mes sélections actives
           </Link>
         </div>
       </div>
       <div className="bg-white p-8 rounded shadow w-full max-w-2xl">
-        <h2 className="text-2xl font-bold text-blue-900 mb-4">Mes abonnements</h2>
+        <h2 className="text-2xl font-bold text-blue-900 mb-4">Mes sélections</h2>
         {cards.length === 0 ? (
           <div className="text-blue-900/70">Aucune carte sélectionnée pour le moment.</div>
         ) : (
@@ -335,16 +335,16 @@ export default function SubscriptionsPage() {
               ))}
             </ul>
             
-            {/* Total des abonnements */}
-            <div className="border-t border-blue-200 pt-6">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-lg font-semibold text-blue-900">Total des abonnements :</span>
+                          {/* Total des sélections */}
+              <div className="border-t border-blue-200 pt-6">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-lg font-semibold text-blue-900">Total des sélections :</span>
                 <span className="text-2xl font-bold text-blue-900">
                   {cards.reduce((total, card) => total + (card.price || 0), 0)} €
                 </span>
               </div>
-              <div className="flex justify-between items-center text-sm text-blue-900/70 mb-4">
-                <span>{cards.length} abonnement{cards.length > 1 ? 's' : ''}</span>
+                              <div className="flex justify-between items-center text-sm text-blue-900/70 mb-4">
+                  <span>{cards.length} sélection{cards.length > 1 ? 's' : ''}</span>
                 <span>Prix total</span>
               </div>
               <div className="flex gap-3">
@@ -380,10 +380,10 @@ export default function SubscriptionsPage() {
                   onClick={() => {
                     localStorage.removeItem('selectedCards');
                     setCards([]);
-                    alert('Abonnements vidés !');
+                    alert('Sélections vidées !');
                   }}
                 >
-                  Vider mes abonnements
+                  Vider mes sélections
                 </button>
               </div>
             </div>

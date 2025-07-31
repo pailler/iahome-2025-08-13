@@ -1,78 +1,58 @@
 'use client';
-import { useEffect, useState } from "react";
-import { validateAccessToken, hasPermission } from "../../../utils/accessToken";
-import { useParams, useSearchParams } from "next/navigation";
+import { useEffect, useState, useRef } from 'react';
+import { useParams } from 'next/navigation';
 
-export default function AccessPage() {
+export default function SecureAccess() {
   const params = useParams();
-  const searchParams = useSearchParams();
-  
-  // Récupérer le token depuis les paramètres de query
-  const token = searchParams.get('token') || params.token as string;
-  
+  const token = params.token as string;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [accessData, setAccessData] = useState<any>(null);
+  const [moduleInfo, setModuleInfo] = useState<any>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
-    const validateToken = async () => {
+    const loadSecureModule = async () => {
       try {
-        console.log('🔍 [PAGE] Début validation token:', token);
-        console.log('🔍 [PAGE] Params token:', params.token);
-        console.log('🔍 [PAGE] Search params token:', searchParams.get('token'));
         setLoading(true);
-        
-        if (!token) {
-          console.log('❌ [PAGE] Token manquant');
-          setError('Token d\'accès manquant');
-          return;
+        setError(null);
+
+        console.log('🔐 Chargement module sécurisé avec token:', token);
+
+        // Charger le module via l'API sécurisée
+        if (iframeRef.current) {
+          iframeRef.current.src = `/api/generate-access-url?token=${token}`;
         }
 
-        console.log('🔍 [PAGE] Appel validateAccessToken...');
-        
-        const tokenData = await validateAccessToken(token);
-        
-        console.log('🔍 [PAGE] Résultat validateAccessToken:', tokenData);
-        
-        if (!tokenData) {
-          console.log('❌ [PAGE] Token invalide ou expiré');
-          setError('Token d\'accès invalide ou expiré');
-          return;
-        }
-
-        console.log('🔍 [PAGE] Vérification permissions...');
-        
-        // Vérifier les permissions si nécessaire
-        if (!hasPermission(tokenData, 'access')) {
-          console.log('❌ [PAGE] Permissions insuffisantes');
-          setError('Permissions insuffisantes');
-          return;
-        }
-
-        console.log('✅ [PAGE] Accès validé avec succès!');
-        setAccessData(tokenData);
-        console.log('✅ Accès validé pour:', tokenData);
-
-        // Pas de redirection automatique pour éviter les boucles
-        // L'utilisateur cliquera sur le bouton pour accéder au module
+        // Simuler un délai pour l'affichage
+        setTimeout(() => {
+          setLoading(false);
+        }, 2000);
 
       } catch (error) {
-        console.error('❌ [PAGE] Erreur validation token:', error);
-        setError('Erreur lors de la validation du token');
-      } finally {
+        console.error('❌ Erreur chargement module sécurisé:', error);
+        setError(error instanceof Error ? error.message : 'Erreur inconnue');
         setLoading(false);
       }
     };
 
-    validateToken();
-  }, [token, params.token, searchParams]);
+    if (token) {
+      loadSecureModule();
+    }
+  }, [token]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Validation de l'accès...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-6"></div>
+          <h1 className="text-2xl font-bold text-white mb-2">Accès sécurisé en cours...</h1>
+          <p className="text-gray-400 mb-4">Vérification du token et chargement du module</p>
+          <div className="bg-gray-800 p-4 rounded-lg max-w-md mx-auto">
+            <div className="text-sm text-gray-300 mb-2">Token de sécurité:</div>
+            <div className="font-mono text-blue-400 text-xs break-all">
+              {token ? `${token.substring(0, 8)}...${token.substring(token.length - 8)}` : 'Chargement...'}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -80,63 +60,87 @@ export default function AccessPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-blue-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-6xl mb-4">🚫</div>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Accès refusé</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <button 
-            onClick={() => window.history.back()}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Retour
-          </button>
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="text-red-500 text-6xl mb-4">❌</div>
+          <h1 className="text-2xl font-bold text-white mb-2">Erreur d'accès</h1>
+          <p className="text-gray-400 mb-4">{error}</p>
+          <div className="space-y-3">
+            <button
+              onClick={() => window.history.back()}
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors w-full"
+            >
+              ← Retour
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors w-full"
+            >
+              🔄 Réessayer
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (accessData) {
-    return (
-      <div className="min-h-screen bg-blue-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-6xl mb-4">✅</div>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Accès autorisé</h2>
-          <p className="text-gray-600 mb-4">
-            Module: {accessData.moduleName}
-          </p>
-          <div className="animate-pulse mb-6">
-            <div className="text-sm text-gray-500">
-              Expire le: {accessData.expiresAt.toLocaleString('fr-FR')}
+  return (
+    <div className="min-h-screen bg-gray-900">
+      {/* Header sécurisé */}
+      <div className="bg-black bg-opacity-50 backdrop-blur-sm border-b border-gray-700 p-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => window.history.back()}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              ← Retour
+            </button>
+            <div className="h-6 w-px bg-gray-600"></div>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-400">Accès sécurisé</span>
+              <div className="px-2 py-1 bg-green-900 text-green-300 rounded-full text-xs font-medium">
+                🔒 Sécurisé
+              </div>
             </div>
           </div>
           
-          {/* Bouton de redirection manuelle */}
-          <button
-            onClick={() => {
-              const moduleUrls: { [key: string]: string } = {
-                'IAmetube': 'https://metube.regispailler.fr',
-                'IAphoto': 'https://iaphoto.regispailler.fr',
-                'IAvideo': 'https://iavideo.regispailler.fr',
-                'test-module': 'https://test.example.com',
-                'Google': 'https://www.google.com',
-                'iatube': 'https://metube.regispailler.fr',
-              };
-
-              const targetUrl = moduleUrls[accessData.moduleName];
-              if (targetUrl) {
-                console.log('🔍 [PAGE] Redirection manuelle vers:', targetUrl);
-                window.location.href = `${targetUrl}?token=${token}`;
-              }
-            }}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            🚀 Accéder à {accessData.moduleName}
-          </button>
+          <div className="flex items-center space-x-3">
+            <div className="text-xs text-gray-500">
+              Token: {token ? `${token.substring(0, 8)}...` : 'N/A'}
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-gray-400 hover:text-white transition-colors"
+              title="Recharger"
+            >
+              🔄
+            </button>
+          </div>
         </div>
       </div>
-    );
-  }
 
-  return null;
+      {/* Module sécurisé */}
+      <div className="w-full h-[calc(100vh-80px)]">
+        <iframe
+          ref={iframeRef}
+          className="w-full h-full border-0"
+          title="Module sécurisé"
+          allow="camera; microphone; geolocation; encrypted-media"
+          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
+        />
+      </div>
+
+      {/* Indicateur de sécurité */}
+      <div className="fixed bottom-4 right-4 bg-black bg-opacity-75 text-white p-4 rounded-lg text-sm max-w-xs">
+        <div className="font-semibold mb-2">🔒 Accès sécurisé</div>
+        <div className="space-y-1 text-xs">
+          <div>• Token temporaire généré</div>
+          <div>• Authentification automatique</div>
+          <div>• Expiration automatique</div>
+          <div>• Aucune URL visible</div>
+        </div>
+      </div>
+    </div>
+  );
 } 

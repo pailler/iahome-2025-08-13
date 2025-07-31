@@ -34,9 +34,34 @@ const nextConfig: NextConfig = {
     ];
   },
   
-  // Configuration des domaines autorisés
+  // Configuration des domaines autorisés avec remotePatterns
   images: {
-    domains: ['home.regispailler.fr', '192.168.1.150', 'localhost', 'images.unsplash.com']
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'home.regispailler.fr',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'http',
+        hostname: '192.168.1.150',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        port: '',
+        pathname: '/**',
+      },
+    ],
   },
 };
 

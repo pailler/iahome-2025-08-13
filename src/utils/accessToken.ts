@@ -83,3 +83,14 @@ export function hasPermission(tokenData: AccessTokenData, permission: string): b
   // Vous pouvez ajouter une logique plus complexe ici si nécessaire
   return tokenData.isValid;
 }
+
+export function generateAccessToken(userId: string, moduleName: string, permissions?: string[]): string {
+  // Générer un token simple pour l'instant
+  // En production, vous devriez utiliser une méthode plus sécurisée
+  const timestamp = Date.now();
+  const randomString = Math.random().toString(36).substring(2, 15);
+  const token = `${userId}-${moduleName}-${timestamp}-${randomString}`;
+  
+  // Encoder en base64 pour masquer les détails
+  return Buffer.from(token).toString('base64');
+}
