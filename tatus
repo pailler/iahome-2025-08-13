@@ -1,0 +1,5 @@
+[33me4c6fbf[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Fix: Correction du système d'accès admin et ajout du bouton d'ajout d'articles sur le blog
+[33m88adc94[m Ajout des variables d'environnement pour les credentials des modules
+[33mbc41487[m Proxy avec modification automatique des URLs dans le HTML pour résoudre les erreurs 401
+[33m4fc223f[m Proxy complet avec modification automatique des URLs pour résoudre les erreurs 401
+[33mb103118[m Permettre la réutilisation des tokens d'accès pour stablediffusion

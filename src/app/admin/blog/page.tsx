@@ -17,21 +17,14 @@ interface BlogArticle {
   image_url?: string;
 }
 
-interface User {
-  id: string;
-  email: string;
-  role: string;
-}
-
 export default function AdminBlogPage() {
   const session = useSession();
   const user = useUser();
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
   const [articles, setArticles] = useState<BlogArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingArticle, setEditingArticle] = useState<BlogArticle | null>(null);
-  const [currentUser, setCurrentUser] = useState<any>(null);
   const [formData, setFormData] = useState({
     title: '',
     slug: '',
@@ -45,83 +38,39 @@ export default function AdminBlogPage() {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    // Récupérer la session directement depuis Supabase
-    const getSession = async () => {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      console.log('Admin Blog - Session récupérée:', currentSession);
-      
-      if (currentSession?.user) {
-        console.log('Admin Blog - Utilisateur trouvé:', currentSession.user);
-        setCurrentUser(currentSession.user);
-        fetchUserRole(currentSession.user.id);
-      } else {
-        console.log('Admin Blog - Pas de session utilisateur, tentative de récupération directe...');
-        // Essayer de récupérer directement le profil pour formateur_tic@hotmail.com
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id, email, role')
-          .eq('email', 'formateur_tic@hotmail.com')
-          .single();
+    const fetchUserRole = async () => {
+      if (session && user) {
+        console.log('Chargement du rôle pour:', user.email, 'ID:', user.id);
         
-        if (profile && profile.role === 'admin') {
-          console.log('Admin Blog - Profil admin trouvé directement');
-          setCurrentUser({ id: profile.id, email: profile.email });
-          setUserRole('admin');
-        } else {
-          console.log('Admin Blog - Pas de profil admin trouvé');
-          setCurrentUser(null);
-          setUserRole(null);
+        try {
+          // Essayer d'abord de récupérer depuis auth.users (plus fiable)
+          const { data: authData, error: authError } = await supabase.auth.getUser();
+          if (authError) {
+            console.warn('Erreur lors du chargement depuis auth:', authError);
+            setRole('user'); // Rôle par défaut
+          } else {
+            const userRole = authData.user?.user_metadata?.role || 'user';
+            console.log('Rôle récupéré depuis auth.users:', userRole);
+            setRole(userRole);
+          }
+        } catch (err) {
+          console.error('Erreur inattendue lors du chargement du rôle:', err);
+          setRole('user'); // Rôle par défaut
         }
+      } else {
+        console.log('Pas de session ou utilisateur:', { session: !!session, user: !!user });
+        setRole(null);
       }
     };
     
-    getSession();
-  }, []);
+    fetchUserRole();
+  }, [session, user]);
 
   useEffect(() => {
-    if (userRole === 'admin') {
+    if (role === 'admin') {
       fetchArticles();
     }
-  }, [userRole]);
-
-  const fetchUserRole = async (userId: string) => {
-    try {
-      console.log('Admin Blog - === DEBUG FETCH ROLE ===');
-      console.log('Admin Blog - User ID:', userId);
-      
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', userId)
-        .single();
-
-      console.log('Admin Blog - Résultat requête:', { data, error });
-
-      if (error) {
-        console.error('Erreur lors du chargement du rôle:', error);
-        // Fallback: si erreur, essayer de récupérer directement
-        const { data: fallbackProfile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('email', 'formateur_tic@hotmail.com')
-          .single();
-        
-        if (fallbackProfile && fallbackProfile.role === 'admin') {
-          console.log('Admin Blog - Rôle admin trouvé via fallback');
-          setUserRole('admin');
-          return;
-        }
-        return;
-      }
-
-      console.log('Admin Blog - Rôle trouvé:', data?.role);
-      setUserRole(data?.role);
-    } catch (error) {
-      console.error('Erreur:', error);
-      // Fallback en cas d'erreur
-      setUserRole('admin');
-    }
-  };
+  }, [role]);
 
   const fetchArticles = async () => {
     try {
@@ -276,6 +225,7 @@ export default function AdminBlogPage() {
     });
   };
 
+  // Vérification des droits d'accès
   if (!session) {
     return (
       <div className="min-h-screen bg-gray-50 pt-20">
@@ -299,7 +249,7 @@ export default function AdminBlogPage() {
     );
   }
 
-  if (userRole !== 'admin') {
+  if (role !== 'admin') {
     return (
       <div className="min-h-screen bg-gray-50 pt-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -405,6 +355,28 @@ export default function AdminBlogPage() {
             </div>
           </div>
         </div>
+
+        {/* Messages */}
+        {message && (
+          <div className={`mb-6 p-4 rounded-lg ${
+            message.includes('succès') 
+              ? 'bg-green-100 text-green-700 border border-green-200' 
+              : 'bg-red-100 text-red-700 border border-red-200'
+          }`}>
+            <div className="flex items-center">
+              {message.includes('succès') ? (
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )}
+              {message}
+            </div>
+          </div>
+        )}
 
         {/* Formulaire d'ajout/modification */}
         {showForm && (
@@ -553,28 +525,6 @@ export default function AdminBlogPage() {
                 </button>
               </div>
             </form>
-          </div>
-        )}
-
-        {/* Messages */}
-        {message && (
-          <div className={`mb-6 p-4 rounded-lg ${
-            message.includes('succès') 
-              ? 'bg-green-100 text-green-700 border border-green-200' 
-              : 'bg-red-100 text-red-700 border border-red-200'
-          }`}>
-            <div className="flex items-center">
-              {message.includes('succès') ? (
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              )}
-              {message}
-            </div>
           </div>
         )}
 
