@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../utils/supabaseClient";
 import { useRouter } from 'next/navigation';
 import Link from "next/link";
+import Header from '../../components/Header';
 
 export default function EncoursPage() {
   const router = useRouter();
@@ -13,6 +14,11 @@ export default function EncoursPage() {
   const [loading, setLoading] = useState(true);
   const [sessionChecked, setSessionChecked] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [iframeModal, setIframeModal] = useState<{isOpen: boolean, url: string, title: string}>({
+    isOpen: false,
+    url: '',
+    title: ''
+  });
 
   // Vérification de la session
   useEffect(() => {
@@ -180,6 +186,35 @@ export default function EncoursPage() {
     return diffDays;
   };
 
+  // Fonction pour vérifier l'accès à un module
+  const checkModuleAccess = async (moduleName: string) => {
+    if (!session?.user?.id) return { canAccess: false, reason: 'Utilisateur non connecté' };
+    
+    try {
+      const response = await fetch('/api/check-session-access', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: session.user.id,
+          moduleName: moduleName
+        }),
+      });
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Erreur vérification accès:', error);
+      return { canAccess: false, reason: 'Erreur de vérification' };
+    }
+  };
+
+  // Fonction pour obtenir les conditions d'accès selon le module
+  const getAccessConditions = (moduleTitle: string) => {
+    return 'Accès illimité';
+  };
+
   if (!sessionChecked) {
     return (
       <div className="min-h-screen bg-blue-50 flex items-center justify-center pt-12">
@@ -193,9 +228,9 @@ export default function EncoursPage() {
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-blue-50 pt-12">
-        {/* En-tête */}
-        <header className="w-full bg-white shadow-sm border-b border-gray-100">
+      <div className="min-h-screen bg-blue-50">
+        <Header />
+        <header>
           <div className="max-w-7xl mx-auto px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
@@ -235,28 +270,26 @@ export default function EncoursPage() {
   }
 
   return (
-    <div className="min-h-screen bg-blue-50 pt-12">
-      {/* En-tête */}
-      <header className="w-full bg-white shadow-sm border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link href="/" className="text-blue-600 hover:text-blue-700 font-semibold">
-                ← Retour à l'accueil
-              </Link>
-              <h1 className="text-2xl font-bold text-gray-900">📦 Mes Abonnements en Cours</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link 
-                href="/abonnements" 
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Gérer les sélections
-              </Link>
-            </div>
+    <div className="min-h-screen bg-blue-50">
+      <Header />
+      <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Link href="/" className="text-blue-600 hover:text-blue-700 font-semibold">
+              ← Retour à l'accueil
+            </Link>
+            <h1 className="text-2xl font-bold text-gray-900">📦 Mes Abonnements en Cours</h1>
+          </div>
+          <div className="flex items-center space-x-4">
+            <Link 
+              href="/selections" 
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Gérer les sélections
+            </Link>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Contenu principal */}
       <main className="max-w-7xl mx-auto px-6 py-8">
@@ -379,21 +412,66 @@ export default function EncoursPage() {
                             {access.access_type}
                           </span>
                         </div>
+                        <div className="text-sm text-gray-600">
+                          <span className="font-medium">Conditions :</span> 
+                          <span className="ml-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs">
+                            {getAccessConditions(module.title)}
+                          </span>
+                        </div>
                       </div>
 
                       <button 
                         className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
                         onClick={async () => {
-                          const magicLink = await generateModuleMagicLink(module.title);
-                          if (magicLink) {
-                            window.open(magicLink, '_blank');
-                          } else {
-                            alert('Erreur lors de la génération du lien d\'accès');
+                          // Vérifier l'accès au module avant d'ouvrir
+                          const accessCheck = await checkModuleAccess(module.title);
+                          
+                          if (!accessCheck.canAccess) {
+                            if (accessCheck.reason === 'Session expirée') {
+                              alert(`Session expirée pour ${module.title}. Veuillez générer un nouveau lien d'accès.`);
+                            } else {
+                              alert(`Accès refusé pour ${module.title}: ${accessCheck.reason}`);
+                            }
+                            return;
                           }
+
+                            // Accès direct pour tous les modules dans une iframe
+                            // Accès direct pour tous les autres modules dans une iframe
+                            const moduleUrls: { [key: string]: string } = {
+                              'IA metube': 'https://metube.regispailler.fr',
+                              'IAmetube': 'https://metube.regispailler.fr',
+                              'IAphoto': 'https://iaphoto.regispailler.fr',
+                              'IAvideo': 'https://iavideo.regispailler.fr',
+                              'Librespeed': 'https://librespeed.regispailler.fr',
+                              'PSitransfer': 'https://psitransfer.regispailler.fr',
+                              'PDF+': 'https://pdfplus.regispailler.fr',
+                            };
+                            
+                            const directUrl = moduleUrls[module.title];
+                            if (directUrl) {
+                              console.log('🔍 Ouverture de', module.title, 'dans une iframe:', directUrl);
+                              setIframeModal({
+                                isOpen: true,
+                                url: directUrl,
+                                title: module.title
+                              });
+                            } else {
+                              // Fallback : essayer un magic link
+                              const magicLink = await generateModuleMagicLink(module.title);
+                              if (magicLink) {
+                                setIframeModal({
+                                  isOpen: true,
+                                  url: magicLink,
+                                  title: module.title
+                                });
+                              } else {
+                                alert('Erreur lors de la génération du lien d\'accès');
+                              }
+                            }
                         }}
                         title={`Accéder à ${module.title}`}
                       >
-                        🔗 Accéder à {module.title}
+                                                                        {module.price === 0 ? '🆓 Accéder gratuitement' : '🔗 Accéder à ' + module.title}
                       </button>
                     </div>
                   </div>
@@ -403,6 +481,38 @@ export default function EncoursPage() {
           </div>
         )}
       </main>
+
+      {/* Modal pour l'iframe */}
+      {iframeModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl h-[90vh] flex flex-col">
+            {/* Header de la modal */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {iframeModal.title}
+              </h3>
+              <button
+                onClick={() => setIframeModal({isOpen: false, url: '', title: ''})}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            {/* Contenu de l'iframe */}
+            <div className="flex-1 p-4">
+              <iframe
+                src={iframeModal.url}
+                className="w-full h-full border-0 rounded"
+                title={iframeModal.title}
+                allowFullScreen
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

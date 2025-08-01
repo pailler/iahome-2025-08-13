@@ -19,11 +19,12 @@ export interface MagicLinkToken {
 /**
  * Générer un magic link sécurisé
  */
-export function generateMagicLink(userId: string, moduleName: string, permissions: string[] = ['access']): string {
+export function generateMagicLink(userId: string, moduleName: string, permissions: string[] = ['access'], durationMinutes?: number): string {
+  const expiryMinutes = durationMinutes || MAGIC_LINK_EXPIRY_HOURS * 60;
   const payload: MagicLinkPayload = {
     userId,
     moduleName,
-    expiresAt: Date.now() + (MAGIC_LINK_EXPIRY_HOURS * 60 * 60 * 1000),
+    expiresAt: Date.now() + (expiryMinutes * 60 * 1000),
     permissions
   };
 

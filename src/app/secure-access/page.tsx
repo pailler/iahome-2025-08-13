@@ -11,18 +11,12 @@ interface ModuleConfig {
 const MODULES: ModuleConfig[] = [
   {
     id: '1',
-    name: 'Stable Diffusion',
-    icon: '🎨',
-    color: 'from-purple-600 to-pink-600'
-  },
-  {
-    id: '2',
     name: 'IA Tube',
     icon: '📹',
     color: 'from-blue-600 to-cyan-600'
   },
   {
-    id: '3',
+    id: '2',
     name: 'IA Metube',
     icon: '🎵',
     color: 'from-green-600 to-emerald-600'

@@ -4,25 +4,33 @@ import { useEffect, useState } from "react";
 import { supabase } from "../utils/supabaseClient";
 import { useRouter } from 'next/navigation';
 import Link from "next/link";
+import Header from '../components/Header';
 
 export default function Home() {
   const router = useRouter();
   const [session, setSession] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<string | null>(null);
-  const [selectedCards, setSelectedCards] = useState<any[]>([]);
+  const [selectedModules, setSelectedModules] = useState<any[]>([]);
   const [search, setSearch] = useState('');
-  const [cards, setCards] = useState<any[]>([]);
+  const [modules, setModules] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAdminModal, setShowAdminModal] = useState(false);
-  const [editingCard, setEditingCard] = useState<any>(null);
-  const [isAddingCard, setIsAddingCard] = useState(false);
+
   const [priceFilter, setPriceFilter] = useState('all');
   const [experienceFilter, setExperienceFilter] = useState('all');
   const [sortBy, setSortBy] = useState('most_used');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [userSubscriptions, setUserSubscriptions] = useState<{[key: string]: boolean}>({});
   const [showScrollToTop, setShowScrollToTop] = useState(false);
+
+
+
+  // État pour la modal iframe
+  const [iframeModal, setIframeModal] = useState<{isOpen: boolean, url: string, title: string}>({
+    isOpen: false,
+    url: '',
+    title: ''
+  });
 
   // Vérification de la configuration Supabase
   useEffect(() => {
@@ -96,8 +104,8 @@ export default function Home() {
 
 
   useEffect(() => {
-    // Charger les cartes depuis Supabase
-    const fetchCards = async () => {
+    // Charger les modules depuis Supabase
+    const fetchModules = async () => {
       try {
         console.log('=== DIAGNOSTIC SUPABASE ===');
         console.log('URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
@@ -112,7 +120,7 @@ export default function Home() {
         
         console.log('Test de connexion:', { testData, testError });
         
-        console.log('Tentative de chargement des cartes depuis Supabase...');
+        console.log('Tentative de chargement des modules depuis Supabase...');
         const { data, error } = await supabase
           .from('cartes')
           .select('*');
@@ -121,35 +129,35 @@ export default function Home() {
         
         if (error) {
           console.error('=== ERREUR DÉTAILLÉE ===');
-          console.error('Erreur lors du chargement des cartes:', error);
+          console.error('Erreur lors du chargement des modules:', error);
           console.error('Code d\'erreur:', error.code);
           console.error('Message d\'erreur:', error.message);
           console.error('Détails:', error.details);
           console.error('Hint:', error.hint);
         } else {
-          console.log('Cartes chargées avec succès:', data);
+          console.log('Modules chargés avec succès:', data);
           
-          // Ajouter des rôles et données aléatoires aux cartes pour l'affichage
-          const cardsWithRoles = (data || []).map(card => ({
-            ...card,
+          // Ajouter des rôles et données aléatoires aux modules pour l'affichage
+          const modulesWithRoles = (data || []).map(module => ({
+            ...module,
             // Nettoyer et utiliser la catégorie de la base de données
-            category: cleanCategory(card.category || 'Non classé'),
+            category: cleanCategory(module.category || 'Non classé'),
             // Ajouter des données aléatoires seulement pour l'affichage (pas stockées en DB)
             role: getRandomRole(),
             usage_count: Math.floor(Math.random() * 1000) + 1,
             experience_level: getRandomExperienceLevel()
           }));
           
-          setCards(cardsWithRoles);
+          setModules(modulesWithRoles);
         }
       } catch (error) {
-        console.error('Erreur lors du chargement des cartes:', error);
+        console.error('Erreur lors du chargement des modules:', error);
       } finally {
         setLoading(false);
       }
     };
     
-    fetchCards();
+    fetchModules();
   }, []);
 
   useEffect(() => {
@@ -183,39 +191,41 @@ export default function Home() {
   }, [session, user]);
 
   useEffect(() => {
-    // Charger les cartes sélectionnées depuis le localStorage
-    const saved = localStorage.getItem('selectedCards');
+    // Charger les modules sélectionnés depuis le localStorage
+    const saved = localStorage.getItem('selectedModules');
     if (saved) {
       try {
-        setSelectedCards(JSON.parse(saved));
+        setSelectedModules(JSON.parse(saved));
       } catch {
-        setSelectedCards([]);
+        setSelectedModules([]);
       }
     }
   }, []);
 
-  const handleSubscribe = (card: any) => {
-    const isSelected = selectedCards.some(c => c.id === card.id);
-    let newSelectedCards;
+
+
+  const handleSubscribe = (module: any) => {
+    const isSelected = selectedModules.some(m => m.id === module.id);
+    let newSelectedModules;
     
     if (isSelected) {
       // Désabonner
-      newSelectedCards = selectedCards.filter(c => c.id !== card.id);
-      console.log('Désabonnement de:', card.title);
+      newSelectedModules = selectedModules.filter(m => m.id !== module.id);
+      console.log('Désabonnement de:', module.title);
     } else {
       // S'abonner
-      newSelectedCards = [...selectedCards, card];
-      console.log('Abonnement à:', card.title);
+      newSelectedModules = [...selectedModules, module];
+      console.log('Abonnement à:', module.title);
     }
     
-    console.log('Nouvelles cartes sélectionnées:', newSelectedCards);
-    setSelectedCards(newSelectedCards);
-    localStorage.setItem('selectedCards', JSON.stringify(newSelectedCards));
+    console.log('Nouveaux modules sélectionnés:', newSelectedModules);
+    setSelectedModules(newSelectedModules);
+    localStorage.setItem('selectedModules', JSON.stringify(newSelectedModules));
     console.log('localStorage mis à jour');
   };
 
-  const isCardSelected = (cardId: string) => {
-    return selectedCards.some(card => card.id === cardId);
+  const isModuleSelected = (moduleId: string) => {
+    return selectedModules.some(module => module.id === moduleId);
   };
 
   // Fonction pour convertir en majuscules
@@ -226,15 +236,14 @@ export default function Home() {
     return category.replace(/[^a-zA-Z0-9\s]/g, '').trim();
   };
 
+
+
   // Fonction pour obtenir l'URL d'accès d'un module
   const getModuleAccessUrl = async (moduleName: string) => {
     console.log('🔐 getModuleAccessUrl appelée pour:', moduleName);
     
     // Mapping des modules vers leurs pages d'accès sécurisées
     const secureModuleUrls: { [key: string]: string } = {
-      'stablediffusion': '/stablediffusion-iframe-secure', // Nouvelle interface iframe sécurisée
-      'iatube': '/secure-module-access?module=iatube',
-      'IAmetube': '/secure-module-access?module=IAmetube',
       // Ajouter d'autres modules ici quand ils seront disponibles
       // 'IAphoto': '/secure-module-access?module=IAphoto',
       // 'IAvideo': '/secure-module-access?module=IAvideo',
@@ -251,10 +260,10 @@ export default function Home() {
     const hasSubscription = userSubscriptions[moduleName.toLowerCase()];
     console.log('🔍 Vérification abonnement:', { moduleName, hasSubscription, userSubscriptions });
     
-    // Temporairement, permettre l'accès à Stable Diffusion même sans abonnement vérifié
-    if (!hasSubscription && moduleName.toLowerCase() !== 'stablediffusion') {
+    // Vérifier l'abonnement pour tous les modules
+    if (!hasSubscription) {
       console.log(`❌ Aucun abonnement actif pour ${moduleName}`);
-      router.push(`/abonnements?module=${moduleName.toLowerCase()}`);
+      router.push(`/selections?module=${moduleName.toLowerCase()}`);
       return null;
     }
     
@@ -273,8 +282,8 @@ export default function Home() {
     return `/secure-module-access?module=${moduleName.toLowerCase()}`;
   };
 
-  // Obtenir toutes les catégories uniques depuis les cartes
-  const existingCategories = Array.from(new Set(cards.map(card => card.category).filter(Boolean)));
+  // Obtenir toutes les catégories uniques depuis les modules
+  const existingCategories = Array.from(new Set(modules.map(module => module.category).filter(Boolean)));
   
   // Définir les catégories autorisées
   const authorizedCategories = ['IA ASSISTANT', 'IA BUREAUTIQUE', 'IA PHOTO', 'IA VIDEO', 'IA MAO', 'IA PROMPTS', 'IA MARKETING', 'IA DESIGN'];
@@ -287,28 +296,33 @@ export default function Home() {
   
   const categories = ['Toutes les catégories', ...allCategories];
 
-  // Filtrer et trier les cartes
-  const filteredAndSortedCards = cards
-    .filter(card => {
+  // Filtrer et trier les modules
+  const filteredAndSortedModules = modules
+    .filter(module => {
+      // Exclure Stable Diffusion de la page d'accueil
+      if (module.title.toLowerCase().includes('stablediffusion') || module.title.toLowerCase().includes('sdnext')) {
+        return false;
+      }
+
       const q = search.toLowerCase();
       const matchesSearch = (
-        card.title.toLowerCase().includes(q) ||
-        card.description.toLowerCase().includes(q) ||
-        card.category.toLowerCase().includes(q)
+        module.title.toLowerCase().includes(q) ||
+        module.description.toLowerCase().includes(q) ||
+        module.category.toLowerCase().includes(q)
       );
 
       // Filtre par prix
       const matchesPrice = priceFilter === 'all' || 
-        (priceFilter === 'free' && card.price === 0) ||
-        (priceFilter === 'paid' && card.price > 0);
+        (priceFilter === 'free' && module.price === 0) ||
+        (priceFilter === 'paid' && module.price > 0);
 
       // Filtre par niveau d'expérience
       const matchesExperience = experienceFilter === 'all' || 
-        card.experience_level === experienceFilter;
+        module.experience_level === experienceFilter;
 
       // Filtre par catégorie
       const matchesCategory = categoryFilter === 'all' || 
-        card.category === categoryFilter;
+        module.category === categoryFilter;
 
       return matchesSearch && matchesPrice && matchesExperience && matchesCategory;
     })
@@ -333,15 +347,15 @@ export default function Home() {
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const cardsPerPage = 9;
+  const modulesPerPage = 9;
   
   // Calculer les indices pour la pagination
-  const indexOfLastCard = currentPage * cardsPerPage;
-  const indexOfFirstCard = indexOfLastCard - cardsPerPage;
-  const currentCards = filteredAndSortedCards.slice(indexOfFirstCard, indexOfLastCard);
+  const indexOfLastModule = currentPage * modulesPerPage;
+  const indexOfFirstModule = indexOfLastModule - modulesPerPage;
+  const currentModules = filteredAndSortedModules.slice(indexOfFirstModule, indexOfLastModule);
   
   // Calculer le nombre total de pages
-  const totalPages = Math.ceil(filteredAndSortedCards.length / cardsPerPage);
+  const totalPages = Math.ceil(filteredAndSortedModules.length / modulesPerPage);
   
   // Fonctions de navigation
   const goToPage = (pageNumber: number) => {
@@ -381,27 +395,24 @@ export default function Home() {
   };
 
   // Fonctions d'administration
-  const handleEditCard = (card: any) => {
-    setEditingCard(card);
-    setShowAdminModal(true);
-  };
 
-  const handleDeleteCard = async (cardId: string) => {
-    if (confirm('Êtes-vous sûr de vouloir supprimer cette carte ?')) {
+
+  const handleDeleteModule = async (moduleId: string) => {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce module ?')) {
       try {
         const { error } = await supabase
           .from('cartes')
           .delete()
-          .eq('id', cardId);
+          .eq('id', moduleId);
         
         if (error) {
           console.error('Erreur lors de la suppression:', error);
-          alert('Erreur lors de la suppression de la carte');
+          alert('Erreur lors de la suppression du module');
         } else {
-          // Recharger les cartes
+          // Recharger les modules
           const { data } = await supabase.from('cartes').select('*');
-          if (data) setCards(data);
-          alert('Carte supprimée avec succès');
+          if (data) setModules(data);
+          alert('Module supprimé avec succès');
         }
       } catch (error) {
         console.error('Erreur:', error);
@@ -410,10 +421,11 @@ export default function Home() {
     }
   };
 
-  const handleAddCard = () => {
-    setEditingCard(null);
-    setIsAddingCard(true);
-    setShowAdminModal(true);
+
+
+  // Fonction pour redirection vers la page d'administration des cartes
+  const handleAdminRedirect = () => {
+    router.push('/admin');
   };
 
   // Fonctions pour générer des données aléatoires
@@ -428,6 +440,35 @@ export default function Home() {
   };
 
   // Fonction pour obtenir les propriétés d'image en rapport avec le nom de la carte
+  // Fonction pour vérifier l'accès à un module
+  const checkModuleAccess = async (moduleName: string) => {
+    if (!user?.id) return { canAccess: false, reason: 'Utilisateur non connecté' };
+    
+    try {
+      const response = await fetch('/api/check-session-access', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          moduleName: moduleName
+        }),
+      });
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Erreur vérification accès:', error);
+      return { canAccess: false, reason: 'Erreur de vérification' };
+    }
+  };
+
+  // Fonction pour obtenir les conditions d'accès selon le module
+  const getAccessConditions = (moduleTitle: string) => {
+    return 'Accès illimité';
+  };
+
   const getCardImageProps = (cardTitle: string) => {
     const title = cardTitle.toLowerCase();
     
@@ -445,18 +486,8 @@ export default function Home() {
         text: 'Transfert',
         imageUrl: 'https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=400&h=225&fit=crop&auto=format'
       },
-      'stablediffusion': { 
-        bgColor: 'bg-purple-600', 
-        icon: '🎨', 
-        text: 'IA Générative',
-        imageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=225&fit=crop&auto=format'
-      },
-      'iatube': { 
-        bgColor: 'bg-red-500', 
-        icon: '📺', 
-        text: 'Vidéo',
-        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
-      },
+
+
       'iametube': { 
         bgColor: 'bg-red-500', 
         icon: '📺', 
@@ -756,185 +787,12 @@ export default function Home() {
   // Fonction pour obtenir l'image source d'une carte
 
 
-  const handleSaveCard = async (cardData: any) => {
-    try {
-      console.log('=== SAUVEGARDE CARTE ===');
-      console.log('Mode:', isAddingCard ? 'Ajout' : 'Modification');
-      console.log('ID carte éditée:', editingCard?.id);
-      console.log('Données à sauvegarder:', cardData);
-      
-      // Validation des données
-      if (!cardData.title || !cardData.description || !cardData.category || cardData.price === undefined) {
-        alert('Veuillez remplir tous les champs obligatoires');
-        return;
-      }
-      
-      if (isAddingCard) {
-        // Ajouter une nouvelle carte
-        console.log('Ajout d\'une nouvelle carte...');
-        const cardDataWithUpperCase = {
-          ...cardData,
-          category: cardData.category.toUpperCase()
-        };
-        const { data, error } = await supabase
-          .from('cartes')
-          .insert([cardDataWithUpperCase])
-          .select();
-        
-        if (error) {
-          console.error('Erreur lors de l\'ajout:', error);
-          alert(`Erreur lors de l'ajout de la carte: ${error.message}`);
-          return;
-        } else {
-          console.log('Carte ajoutée avec succès:', data);
-          alert('Carte ajoutée avec succès');
-        }
-      } else {
-        // Modifier une carte existante
-        console.log('Modification de la carte ID:', editingCard.id);
-        const cardDataWithUpperCase = {
-          ...cardData,
-          category: cardData.category.toUpperCase()
-        };
-        const { data, error } = await supabase
-          .from('cartes')
-          .update(cardDataWithUpperCase)
-          .eq('id', editingCard.id)
-          .select();
-        
-        if (error) {
-          console.error('Erreur lors de la modification:', error);
-          alert(`Erreur lors de la modification de la carte: ${error.message}`);
-          return;
-        } else {
-          console.log('Carte modifiée avec succès:', data);
-          alert('Carte modifiée avec succès');
-        }
-      }
-      
-      // Recharger les cartes
-      console.log('Rechargement des cartes...');
-      const { data } = await supabase.from('cartes').select('*');
-      if (data) {
-        console.log('Cartes rechargées depuis la DB:', data);
-        const cardsWithRoles = data.map(card => ({
-          ...card,
-          // Utiliser la catégorie de la base de données
-          category: card.category || 'Non classé',
-          // Ajouter des données aléatoires seulement pour l'affichage
-          role: getRandomRole(),
-          usage_count: Math.floor(Math.random() * 1000) + 1,
-          experience_level: getRandomExperienceLevel()
-        }));
-        console.log('Cartes avec données enrichies:', cardsWithRoles);
-        setCards(cardsWithRoles);
-      }
-      
-      setShowAdminModal(false);
-      setEditingCard(null);
-      setIsAddingCard(false);
-    } catch (error) {
-      console.error('Erreur:', error);
-      alert('Erreur lors de la sauvegarde');
-    }
-  };
+
 
   return (
     <div className="min-h-screen bg-blue-50 font-sans">
       {/* En-tête (Header) */}
-      <header className="w-full bg-white shadow-sm border-b border-gray-100 mt-10">
-        <div className="max-w-7xl mx-auto px-6 py-2">
-          <div className="flex items-center justify-between">
-            {/* Logo et navigation */}
-            <div className="flex items-center space-x-8">
-              {/* Logo "IAhome" */}
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">I</span>
-                </div>
-                <span className="text-xl font-bold text-blue-900">IAhome</span>
-              </div>
-              
-                             {/* Menu de navigation */}
-               <nav className="hidden md:flex items-center space-x-6">
-                 <a href="#" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">Ressources</a>
-                 <a href="#" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">Communauté</a>
-                 <a href="#" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">Exemples</a>
-                 <Link href="/blog" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">Blog</Link>
-               </nav>
-            </div>
-            
-            {/* Boutons à droite */}
-            <div className="flex items-center space-x-4">
-              
-              {!session ? (
-                <>
-                                     <button className="text-gray-700 font-medium px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors">
-                     Contact commercial
-                   </button>
-                                     <button className="text-gray-700 font-medium px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors" onClick={() => router.push('/login')}>
-                     Se connecter
-                   </button>
-                   <button className="bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors" onClick={() => router.push('/register')}>
-                     Commencer
-                   </button>
-                </>
-              ) : (
-                <div className="flex items-center space-x-3">
-                  {/* Bouton de test pour Stable Diffusion */}
-                  <button 
-                    onClick={async () => {
-                      console.log('🔍 Clic sur le bouton Stable Diffusion');
-                      console.log('👤 Utilisateur:', user?.email);
-                      console.log('🆔 User ID:', user?.id);
-                      console.log('🔐 Session:', session ? 'Active' : 'Inactive');
-                      
-                      if (!user?.id) {
-                        console.log('❌ Utilisateur non connecté, redirection vers login');
-                        router.push('/login');
-                        return;
-                      }
-                      
-                      console.log('✅ Utilisateur connecté, génération de l\'URL d\'accès...');
-                      await getModuleAccessUrl('stablediffusion');
-                    }}
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold px-4 py-2 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-300 flex items-center space-x-2 text-sm"
-                  >
-                    <span>🎨</span>
-                    <span>Stable Diffusion</span>
-                  </button>
-                  
-                  <span className="text-sm text-gray-600">{user?.email}</span>
-                  <div className={`px-3 py-1 rounded-full text-xs font-bold ${
-                    role === 'admin' 
-                      ? 'bg-red-100 text-red-700' 
-                      : 'bg-green-100 text-green-700'
-                  }`}>
-                    {role === 'admin' ? 'ADMIN' : 'USER'}
-                  </div>
-                  
-                  <Link 
-                    href="/encours" 
-                    className="text-gray-700 font-medium px-3 py-1 rounded hover:bg-gray-100 text-sm transition-colors"
-                  >
-                    📦 Mes Modules
-                  </Link>
-                  
-                  <button 
-                    className="text-gray-700 font-medium px-3 py-1 rounded hover:bg-gray-100 text-sm" 
-                    onClick={async () => { 
-                      await supabase.auth.signOut(); 
-                      router.push('/login'); 
-                    }}
-                  >
-                    Se déconnecter
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Section héros */}
       <section className="bg-white py-12">
@@ -953,7 +811,7 @@ export default function Home() {
               <div className="relative max-w-lg">
                                                  <input
                   type="text"
-                  placeholder="Recherche parmi les modules"
+                  placeholder="Recherche parmi les applis"
                   className="w-full px-6 py-4 pl-12 pr-16 rounded-xl border-2 border-gray-200 bg-white text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
@@ -1051,22 +909,6 @@ export default function Home() {
                   
                   {/* Boutons */}
                   <div className="flex items-center gap-3">
-                    {session && role === 'admin' && (
-                      <>
-                        <button 
-                          onClick={handleAddCard}
-                          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                          </svg>
-                          Ajouter
-                        </button>
-                      </>
-                    )}
-                    
-
-                    
                     <select 
                       className="px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       value={sortBy}
@@ -1089,37 +931,28 @@ export default function Home() {
                   <div className="col-span-full text-center py-12">
                     <div className="text-gray-500">Chargement des templates...</div>
                   </div>
-                ) : filteredAndSortedCards.length === 0 ? (
+                ) : filteredAndSortedModules.length === 0 ? (
                   <div className="col-span-full text-center py-12">
                     <div className="text-gray-500">Aucun template trouvé pour "{search}"</div>
                   </div>
-                ) : currentCards.length === 0 ? (
+                ) : currentModules.length === 0 ? (
                   <div className="col-span-full text-center py-12">
-                    <div className="text-gray-500">Aucune carte à afficher (currentCards vide)</div>
-                    <div className="text-sm text-gray-400 mt-2">Total cartes: {filteredAndSortedCards.length}</div>
+                    <div className="text-gray-500">Aucun module à afficher (currentModules vide)</div>
+                    <div className="text-sm text-gray-400 mt-2">Total modules: {filteredAndSortedModules.length}</div>
                   </div>
                 ) : (
-                  currentCards.map((card) => (
-                    <div key={card.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
-                      {/* En-tête de la carte */}
+                  currentModules.map((module) => (
+                    <div key={module.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+                      {/* En-tête du module */}
                       <div className="p-6 pb-4">
                         <div className="flex items-start justify-between mb-3">
                           <span className="inline-block px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded">
-                            {toUpperCase(cleanCategory(card.category))}
+                            {toUpperCase(cleanCategory(module.category))}
                           </span>
                           {session && role === 'admin' && (
                             <div className="flex gap-1">
                               <button 
-                                onClick={() => handleEditCard(card)}
-                                className="p-1 text-gray-400 hover:text-yellow-600 transition-colors"
-                                title="Modifier"
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                                </svg>
-                              </button>
-                              <button 
-                                onClick={() => handleDeleteCard(card.id)}
+                                onClick={() => handleDeleteModule(module.id)}
                                 className="p-1 text-gray-400 hover:text-red-600 transition-colors"
                                 title="Supprimer"
                               >
@@ -1131,10 +964,10 @@ export default function Home() {
                           )}
                         </div>
                         
-                        <Link href={`/card/${card.id}`}>
-                          <h3 className="text-lg font-semibold text-blue-900 mb-2 hover:text-blue-700 cursor-pointer transition-colors">{card.title}</h3>
+                        <Link href={`/card/${module.id}`}>
+                          <h3 className="text-lg font-semibold text-blue-900 mb-2 hover:text-blue-700 cursor-pointer transition-colors">{module.title}</h3>
                         </Link>
-                        <p className="text-sm text-gray-600 mb-4">{card.description}</p>
+                        <p className="text-sm text-gray-600 mb-4">{module.description}</p>
                       </div>
 
 
@@ -1142,15 +975,13 @@ export default function Home() {
                       {/* Visuel généré par IA selon le module */}
                       <div className="w-full aspect-video rounded-lg border border-gray-200 overflow-hidden mb-4">
                                                 {(() => {
-                          const title = card.title.toLowerCase();
-                          const category = card.category.toLowerCase();
+                          const title = module.title.toLowerCase();
+                          const category = module.category.toLowerCase();
                           let imageSrc = '';
                           
-                          // Mapping spécifique pour certaines cartes
-                          if (title.includes('stablediffusion') || title.includes('sdnext')) {
-                            imageSrc = '/images/stablediffusion.jpg';
-                          } else if (title.includes('iatube') || title.includes('iametube')) {
-                            imageSrc = '/images/iatube.jpg';
+                          // Mapping spécifique pour certains modules
+                                    if (title.includes('iametube')) {
+            imageSrc = '/images/iatube.jpg';
                           } else if (title.includes('iaphoto')) {
                             imageSrc = '/images/iaphoto.jpg';
                           } else if (title.includes('chatgpt') || title.includes('gpt')) {
@@ -1160,9 +991,9 @@ export default function Home() {
                           } else if (title.includes('psitransfer') || title.includes('transfer')) {
                             imageSrc = '/images/psitransfer.jpg';
                           } else {
-                            // Attribution d'images par catégorie pour toutes les autres cartes
+                            // Attribution d'images par catégorie pour tous les autres modules
                             if (category.includes('video')) {
-                              imageSrc = '/images/iatube.jpg';
+                              imageSrc = '/images/iametube.jpg';
                             } else if (category.includes('photo')) {
                               imageSrc = '/images/iaphoto.jpg';
                             } else if (category.includes('assistant') || category.includes('ai')) {
@@ -1170,7 +1001,7 @@ export default function Home() {
                             } else if (category.includes('bureautique') || category.includes('document')) {
                               imageSrc = '/images/pdf-plus.jpg';
                             } else if (category.includes('design') || category.includes('marketing')) {
-                              imageSrc = '/images/stablediffusion.jpg';
+                              imageSrc = '/images/chatgpt.jpg';
                             } else if (category.includes('mao') || category.includes('audio')) {
                               imageSrc = '/images/psitransfer.jpg';
                             } else {
@@ -1182,80 +1013,101 @@ export default function Home() {
                           return (
                             <img
                               src={imageSrc}
-                              alt={`Interface ${card.title}`}
+                              alt={`Interface ${module.title}`}
                               className="w-full h-full object-cover"
                             />
                           );
                         })()}
                       </div>
 
-                      {/* Pied de carte */}
+                      {/* Pied du module */}
                       <div className="p-6 pt-4">
                         {/* Tags d'information */}
                         <div className="flex flex-wrap gap-2 mb-4">
-                          {card.role && (
+                          {module.role && (
                             <span className="inline-block px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded">
-                              👤 {card.role}
+                              👤 {module.role}
                             </span>
                           )}
-                          {card.experience_level && (
+                          {module.experience_level && (
                             <span className="inline-block px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded">
-                              📚 {card.experience_level}
+                              📚 {module.experience_level}
                             </span>
                           )}
-                          {card.usage_count && (
+                          {module.usage_count && (
                             <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
-                              📊 {card.usage_count} utilisations
+                              📊 {module.usage_count} utilisations
                             </span>
                           )}
+                          {/* Conditions d'accès */}
+                          <span className="inline-block px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded">
+                            ⏱️ {getAccessConditions(module.title)}
+                          </span>
                         </div>
 
                                                  {/* Prix et bouton */}
                          <div className="flex items-center justify-between">
                            <div className="text-2xl font-bold text-blue-900">
-                             €{card.price}
+                             €{module.price}
                            </div>
                            <div className="flex gap-2">
-                             {/* Bouton d'accès direct pour les modules avec abonnement actif */}
-                             {session && userSubscriptions[card.title] && (
+                             {/* Bouton d'accès direct pour les modules avec abonnement actif ou modules gratuits */}
+                             {session && (userSubscriptions[module.title] || module.price === 0) && (
                                <button 
                                  className="px-4 py-2 rounded-lg font-semibold text-sm bg-green-600 hover:bg-green-700 text-white transition-colors"
                                  onClick={async () => {
-                                   // Vérifier si c'est un module qui nécessite un magic link
-                                   if (card.title === 'iatube' || card.title === 'stablediffusion' || card.title.toLowerCase().includes('iatube') || card.title.toLowerCase().includes('stablediffusion')) {
-                                     // Créer un magic link
-                                     await getModuleAccessUrl(card.title);
+                                   // Vérifier l'accès au module avant d'ouvrir
+                                   const accessCheck = await checkModuleAccess(module.title);
+                                   
+                                   if (!accessCheck.canAccess) {
+                                     if (accessCheck.reason === 'Session expirée') {
+                                       alert(`Session expirée pour ${module.title}. Veuillez générer un nouveau lien d'accès.`);
+                                     } else {
+                                       alert(`Accès refusé pour ${module.title}: ${accessCheck.reason}`);
+                                     }
+                                     return;
+                                   }
+
+                                   // Accès direct pour tous les modules dans une iframe
+                                   if (module.title === 'IA metube' || module.title === 'IAmetube') {
+                                     // Accès direct pour IA metube dans une iframe (module avec abonnement)
+                                     console.log('🔍 Ouverture de metube dans une iframe');
+                                     setIframeModal({
+                                       isOpen: true,
+                                       url: 'https://metube.regispailler.fr',
+                                       title: module.title
+                                     });
                                    } else {
-                                     // Accès direct pour les autres modules
+                                     // Accès direct pour tous les autres modules dans une iframe
                                      const moduleUrls: { [key: string]: string } = {
-                                       'IAmetube': 'https://metube.regispailler.fr',
                                        'IAphoto': 'https://iaphoto.regispailler.fr',
                                        'IAvideo': 'https://iavideo.regispailler.fr',
+                                       'Librespeed': 'https://librespeed.regispailler.fr',
+                                       'PSitransfer': 'https://psitransfer.regispailler.fr',
+                                       'PDF+': 'https://pdfplus.regispailler.fr',
                                      };
                                      
-                                     const directUrl = moduleUrls[card.title];
+                                     const directUrl = moduleUrls[module.title];
                                      if (directUrl) {
-                                       console.log('🔍 Accès direct vers:', directUrl);
-                                       window.open(directUrl, '_blank');
+                                       console.log('🔍 Ouverture de', module.title, 'dans une iframe:', directUrl);
+                                       setIframeModal({
+                                         isOpen: true,
+                                         url: directUrl,
+                                         title: module.title
+                                       });
+                                     } else {
+                                       // Pour les modules gratuits sans URL spécifique, afficher un message
+                                       if (module.price === 0) {
+                                         alert(`Module gratuit "${module.title}" - Accès disponible pour les utilisateurs connectés`);
+                                       }
                                      }
                                    }
                                  }}
-                                 title={`Accéder à ${card.title}`}
+                                 title={`Accéder à ${module.title}`}
                                >
-                                 📺 Accéder
+                                 {module.price === 0 ? '🆓 Accéder gratuitement' : '📺 Accéder'}
                                </button>
                              )}
-                            
-                            <button 
-                              className={`px-6 py-2 rounded-lg font-semibold text-sm transition-colors ${
-                                isCardSelected(card.id) 
-                                  ? 'bg-green-600 hover:bg-green-700 text-white' 
-                                  : 'bg-blue-600 hover:bg-blue-700 text-white'
-                              }`}
-                              onClick={() => handleSubscribe(card)}
-                            >
-                              {isCardSelected(card.id) ? 'Sélectionné' : 'Choisir'}
-                            </button>
                           </div>
                         </div>
                       </div>
@@ -1323,9 +1175,9 @@ export default function Home() {
               )}
               
               {/* Informations de pagination */}
-              {filteredAndSortedCards.length > 0 && (
+              {filteredAndSortedModules.length > 0 && (
                 <div className="text-center text-gray-600 text-sm mt-4">
-                  Affichage de {indexOfFirstCard + 1} à {Math.min(indexOfLastCard, filteredAndSortedCards.length)} sur {filteredAndSortedCards.length} templates
+                  Affichage de {indexOfFirstModule + 1} à {Math.min(indexOfLastModule, filteredAndSortedModules.length)} sur {filteredAndSortedModules.length} templates
                 </div>
               )}
             </div>
@@ -1333,23 +1185,7 @@ export default function Home() {
         </div>
       </section>
 
-              {/* Section Confirmer la(es) sélection(s) */}
-      <section className="bg-blue-600 py-16">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <h2 className="text-3xl font-bold text-white mb-4">
-            Prêt à activer vos sélections ?
-          </h2>
-          <p className="text-blue-100 mb-8 text-lg">
-            Confirmez vos sélections et accédez à tous les outils IA
-          </p>
-          <button
-            onClick={() => router.push('/abonnements')}
-            className="bg-white text-blue-600 font-semibold px-8 py-4 rounded-lg hover:bg-blue-50 transition-colors text-lg shadow-lg"
-          >
-            Confirmer la(es) sélection(s)
-          </button>
-        </div>
-      </section>
+
 
       {/* Footer */}
       <footer className="bg-white border-t border-gray-100 py-6">
@@ -1360,19 +1196,7 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* Modal d'administration */}
-      {showAdminModal && (
-        <AdminCardModal 
-          card={editingCard}
-          isAdding={isAddingCard}
-          onSave={handleSaveCard}
-          onClose={() => {
-            setShowAdminModal(false);
-            setEditingCard(null);
-            setIsAddingCard(false);
-          }}
-        />
-      )}
+
 
       {/* Bouton de retour en haut */}
       {showScrollToTop && (
@@ -1398,152 +1222,55 @@ export default function Home() {
           </svg>
         </button>
       )}
-    </div>
-  );
-}
 
-// Composant modal pour l'administration des cartes
-function AdminCardModal({ card, isAdding, onSave, onClose }: {
-  card: any;
-  isAdding: boolean;
-  onSave: (cardData: any) => void;
-  onClose: () => void;
-}) {
-  const [formData, setFormData] = useState({
-    title: card?.title || '',
-    description: card?.description || '',
-    category: card?.category || '',
-    price: card?.price || 0,
-    youtube_url: card?.youtube_url || ''
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('=== MODAL SUBMIT ===');
-    console.log('FormData envoyé:', formData);
-    console.log('Carte originale:', card);
-    onSave(formData);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-blue-900">
-              {isAdding ? 'Ajouter une carte' : 'Modifier la carte'}
-            </h2>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Titre *
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.title}
-                onChange={(e) => setFormData({...formData, title: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Titre de la carte"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Description *
-              </label>
-              <textarea
-                required
-                value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows={3}
-                placeholder="Description de la carte"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Catégorie *
-              </label>
-              <select
-                required
-                value={formData.category}
-                onChange={(e) => setFormData({...formData, category: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Sélectionner une catégorie</option>
-                <option value="IA ASSISTANT">IA ASSISTANT</option>
-                <option value="IA BUREAUTIQUE">IA BUREAUTIQUE</option>
-                <option value="IA PHOTO">IA PHOTO</option>
-                <option value="IA VIDEO">IA VIDEO</option>
-                <option value="IA MAO">IA MAO</option>
-                <option value="IA PROMPTS">IA PROMPTS</option>
-                <option value="IA MARKETING">IA MARKETING</option>
-                <option value="IA DESIGN">IA DESIGN</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Prix (€) *
-              </label>
-              <input
-                type="number"
-                required
-                min="0"
-                step="0.01"
-                value={formData.price}
-                onChange={(e) => setFormData({...formData, price: parseFloat(e.target.value) || 0})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="0.00"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                URL YouTube (optionnel)
-              </label>
-              <input
-                type="url"
-                value={formData.youtube_url}
-                onChange={(e) => setFormData({...formData, youtube_url: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="https://www.youtube.com/embed/..."
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Utilisez le format embed: https://www.youtube.com/embed/VIDEO_ID
-              </p>
-            </div>
-
-            <div className="flex gap-3 pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                Annuler
-              </button>
-              <button
-                type="submit"
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                {isAdding ? 'Ajouter' : 'Modifier'}
-              </button>
-            </div>
-          </form>
+      {/* Bouton flottant de gestion des modules seulement pour les admins */}
+      {session && role === 'admin' && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <button
+            onClick={handleAdminRedirect}
+            className="inline-flex items-center justify-center w-16 h-16 bg-green-600 text-white rounded-full shadow-xl hover:bg-green-700 transition-all duration-200 transform hover:scale-110"
+            title="Administration du site"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-8 h-8">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+          </button>
         </div>
-      </div>
+      )}
+
+      {/* Modal pour l'iframe */}
+      {iframeModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl h-[90vh] flex flex-col">
+            {/* Header de la modal */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {iframeModal.title}
+              </h3>
+              <button
+                onClick={() => setIframeModal({isOpen: false, url: '', title: ''})}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            {/* Contenu de l'iframe */}
+            <div className="flex-1 p-4">
+              <iframe
+                src={iframeModal.url}
+                className="w-full h-full border-0 rounded"
+                title={iframeModal.title}
+                allowFullScreen
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+

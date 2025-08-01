@@ -12,11 +12,7 @@ const MODULES_CONFIG: Record<string, {
     credentials: { username: 'admin', password: 'Rasulova75' },
     type: 'http-basic'
   },
-  iatube: {
-    url: 'https://iatube.regispailler.fr',
-    credentials: { username: 'admin', password: 'Rasulova75' },
-    type: 'http-basic'
-  },
+
   iametube: {
     url: 'https://iametube.regispailler.fr',
     credentials: { username: 'admin', password: 'Rasulova75' },

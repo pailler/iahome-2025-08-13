@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../../utils/supabaseClient";
 import { useSession, useUser } from "@supabase/auth-helpers-react";
 import Link from "next/link";
+import Header from '../../../components/Header';
 
 interface BlogArticle {
   id: string;
@@ -18,9 +19,9 @@ interface BlogArticle {
 }
 
 export default function AdminBlogPage() {
-  const session = useSession();
-  const user = useUser();
-  const [role, setRole] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [session, setSession] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [articles, setArticles] = useState<BlogArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -38,39 +39,79 @@ export default function AdminBlogPage() {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    const fetchUserRole = async () => {
-      if (session && user) {
-        console.log('Chargement du rôle pour:', user.email, 'ID:', user.id);
-        
-        try {
-          // Essayer d'abord de récupérer depuis auth.users (plus fiable)
-          const { data: authData, error: authError } = await supabase.auth.getUser();
-          if (authError) {
-            console.warn('Erreur lors du chargement depuis auth:', authError);
-            setRole('user'); // Rôle par défaut
-          } else {
-            const userRole = authData.user?.user_metadata?.role || 'user';
-            console.log('Rôle récupéré depuis auth.users:', userRole);
-            setRole(userRole);
-          }
-        } catch (err) {
-          console.error('Erreur inattendue lors du chargement du rôle:', err);
-          setRole('user'); // Rôle par défaut
-        }
+    // Récupérer la session directement depuis Supabase
+    const getSession = async () => {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      console.log('AdminBlog - Session récupérée:', currentSession);
+      setSession(currentSession);
+      
+      if (currentSession?.user) {
+        console.log('AdminBlog - Utilisateur trouvé:', currentSession.user);
+        setCurrentUser(currentSession.user);
+        checkAdminStatus(currentSession.user.id);
       } else {
-        console.log('Pas de session ou utilisateur:', { session: !!session, user: !!user });
-        setRole(null);
+        console.log('AdminBlog - Pas de session utilisateur');
+        setIsAdmin(false);
       }
     };
     
-    fetchUserRole();
-  }, [session, user]);
+    getSession();
+
+    // Écouter les changements d'état d'authentification
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('AdminBlog - Changement d\'état d\'auth:', event, session);
+        setSession(session);
+        setCurrentUser(session?.user || null);
+        
+        if (session?.user) {
+          checkAdminStatus(session.user.id);
+        } else {
+          setIsAdmin(false);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const checkAdminStatus = async (userId: string) => {
+    console.log('AdminBlog - Vérification du rôle pour l\'utilisateur:', userId);
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
+
+      console.log('AdminBlog - Résultat de la vérification du rôle:', { data, error });
+
+      if (error) {
+        console.log('AdminBlog - Erreur lors de la vérification du rôle:', error);
+        setIsAdmin(false);
+        return;
+      }
+
+      const userIsAdmin = data?.role === 'admin';
+      console.log('AdminBlog - Rôle trouvé:', data?.role);
+      console.log('AdminBlog - Est admin:', userIsAdmin);
+      setIsAdmin(userIsAdmin);
+
+      if (userIsAdmin) {
+        fetchArticles();
+      }
+    } catch (err) {
+      console.error('AdminBlog - Erreur inattendue lors de la vérification du rôle:', err);
+      setIsAdmin(false);
+    }
+  };
 
   useEffect(() => {
-    if (role === 'admin') {
+    if (isAdmin) {
       fetchArticles();
     }
-  }, [role]);
+  }, [isAdmin]);
 
   const fetchArticles = async () => {
     try {
@@ -249,10 +290,11 @@ export default function AdminBlogPage() {
     );
   }
 
-  if (role !== 'admin') {
-    return (
-      <div className="min-h-screen bg-gray-50 pt-20">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      if (!isAdmin) {
+      return (
+        <div className="min-h-screen bg-gray-50">
+          <Header />
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">
               Accès refusé
@@ -261,10 +303,12 @@ export default function AdminBlogPage() {
               Vous devez avoir les droits d'administrateur pour accéder à cette page.
             </p>
             <Link
-              href="/"
+              href="https://home.regispailler.fr/admin/"
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Retour à l'accueil
+              Retour à l'administration
             </Link>
           </div>
         </div>
@@ -274,7 +318,8 @@ export default function AdminBlogPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 pt-20">
+      <div className="min-h-screen bg-gray-50">
+        <Header />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
@@ -286,7 +331,8 @@ export default function AdminBlogPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20">
+    <div className="min-h-screen bg-gray-50">
+      <Header />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
@@ -301,7 +347,9 @@ export default function AdminBlogPage() {
             </div>
             <div className="flex space-x-4">
               <Link
-                href="/admin"
+                href="https://home.regispailler.fr/admin/"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
               >
                 ← Retour à l'admin

@@ -23,10 +23,7 @@ export default function ProxyPage({ params }: { params: Promise<{ module: string
       try {
         console.log('🔍 Configuration de l\'iframe pour:', module);
         
-        // Pour Stable Diffusion, on contourne la vérification d'abonnement
-        // car c'est un accès direct avec credentials
-        if (module === 'stablediffusion') {
-          console.log('🎨 Accès direct Stable Diffusion - pas de vérification d\'abonnement');
+
           
                      // Utiliser directement l'URL du proxy qui gère l'authentification
            const proxyUrl = `https://home.regispailler.fr/api/proxy-module/?token=${token}&module=${module}`;

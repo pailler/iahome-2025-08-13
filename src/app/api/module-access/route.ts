@@ -34,16 +34,7 @@ const MODULES_CONFIG: Record<string, {
       authArg: '--auth'
     }
   },
-  iatube: {
-    url: 'https://iatube.regispailler.fr',
-    credentials: { username: 'admin', password: 'Rasulova75' },
-    type: 'http-basic',
-    authMethods: ['basic-auth', 'form-injection', 'cookie-session', 'direct-login'],
-    loginForm: {
-      usernameField: 'username',
-      passwordField: 'password'
-    }
-  },
+
   iametube: {
     url: 'https://iametube.regispailler.fr',
     credentials: { username: 'admin', password: 'Rasulova75' },

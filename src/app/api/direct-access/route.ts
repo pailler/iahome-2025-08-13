@@ -13,12 +13,7 @@ const MODULES_CONFIG: Record<string, {
     credentials: { username: 'admin', password: 'Rasulova75' },
     name: 'Stable Diffusion'
   },
-  'IT': {
-    code: 'IT',
-    url: 'https://iatube.regispailler.fr',
-    credentials: { username: 'admin', password: 'Rasulova75' },
-    name: 'IA Tube'
-  },
+
   'IM': {
     code: 'IM',
     url: 'https://iametube.regispailler.fr',

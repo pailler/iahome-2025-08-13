@@ -4,43 +4,64 @@ import { generateMagicLink } from '../../../utils/magicLink';
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, moduleName, permissions } = await request.json();
+    const { userId, moduleName, permissions, durationMinutes } = await request.json();
 
-    if (!userId || !moduleName) {
+    if (!moduleName) {
       return NextResponse.json(
-        { error: 'userId et moduleName requis' },
+        { error: 'moduleName requis' },
         { status: 400 }
       );
     }
 
-    // Vérifier que l'utilisateur a un abonnement actif
-    const { data: subscriptions, error: subError } = await supabase
-      .from('user_subscriptions')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('module_name', moduleName)
-      .eq('status', 'active')
-      .gt('end_date', new Date().toISOString())
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    if (subError || !subscriptions || subscriptions.length === 0) {
-      return NextResponse.json(
-        { error: 'Aucun abonnement actif trouvé pour ce module' },
-        { status: 403 }
-      );
+    // Récupérer l'utilisateur depuis la session si userId n'est pas fourni
+    let currentUserId = userId;
+    if (!currentUserId) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) {
+        return NextResponse.json(
+          { error: 'Utilisateur non authentifié' },
+          { status: 401 }
+        );
+      }
+      currentUserId = session.user.id;
     }
 
-    // Générer le magic link
-    const magicLinkToken = generateMagicLink(userId, moduleName, permissions || ['access']);
+    // Déterminer la durée d'accès selon le module
+    const isTimeLimitedModule = false; // Aucun module avec limitation de temps
+    
+    // Pour les modules sans limitation de temps, vérifier l'abonnement
+    if (!isTimeLimitedModule) {
+      const { data: subscriptions, error: subError } = await supabase
+        .from('user_subscriptions')
+        .select('*')
+        .eq('user_id', currentUserId)
+        .eq('module_name', moduleName)
+        .eq('status', 'active')
+        .gt('end_date', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (subError || !subscriptions || subscriptions.length === 0) {
+        return NextResponse.json(
+          { error: 'Aucun abonnement actif trouvé pour ce module' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Utiliser la durée spécifiée ou la durée par défaut
+    const accessDurationMinutes = durationMinutes || (isTimeLimitedModule ? 10 : 1440); // 10 minutes ou 24h
+    
+    // Générer le magic link avec la durée appropriée
+    const magicLinkToken = generateMagicLink(currentUserId, moduleName, permissions || ['access'], accessDurationMinutes);
+
+
 
     // Configuration des URLs de base pour chaque module
     const moduleUrls: { [key: string]: string } = {
       'IAmetube': 'https://metube.regispailler.fr', // Utiliser l'adresse publique
-      'stablediffusion': 'https://stablediffusion.regispailler.fr', // Module StableDiffusion
       'IAphoto': 'https://iaphoto.regispailler.fr',
       'IAvideo': 'https://iavideo.regispailler.fr',
-      'iatube': 'https://metube.regispailler.fr', // Module de test pour redirection vers Metube
     };
 
     const baseUrl = moduleUrls[moduleName];
@@ -57,9 +78,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       magicLink: finalUrl,
+      accessUrl: finalUrl, // Ajout pour compatibilité avec le frontend
       moduleName,
-      expiresIn: '24 heures',
-      tokenType: 'Magic Link'
+      expiresIn: isTimeLimitedModule ? '10 minutes' : '24 heures',
+      tokenType: 'Magic Link',
+      accessDuration: accessDurationMinutes
     });
 
   } catch (error) {

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../utils/supabaseClient";
 import { useRouter } from 'next/navigation';
 import Link from "next/link";
+import Header from '../../components/Header';
 
 export default function ModulesPage() {
   const router = useRouter();
@@ -85,8 +86,8 @@ export default function ModulesPage() {
     },
     {
       id: 'future-module',
-      name: 'Module Futur',
-      description: 'Module en développement',
+      name: 'Appli Futur',
+      description: 'Appli en développement',
       url: '#',
       icon: '🚧',
       color: 'bg-gray-400 hover:bg-gray-500',
@@ -96,8 +97,7 @@ export default function ModulesPage() {
 
   return (
     <div className="min-h-screen bg-blue-50">
-      {/* En-tête */}
-      <header className="w-full bg-white shadow-sm border-b border-gray-100">
+      <Header />
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -108,7 +108,7 @@ export default function ModulesPage() {
                 <span className="text-xl font-bold text-blue-900">IAhome</span>
               </Link>
               <span className="text-gray-400">/</span>
-              <h1 className="text-xl font-semibold text-gray-900">Mes Modules</h1>
+              <h1 className="text-xl font-semibold text-gray-900">Mes applis</h1>
             </div>
             
             <div className="flex items-center space-x-3">
@@ -138,10 +138,10 @@ export default function ModulesPage() {
       <main className="max-w-7xl mx-auto px-6 py-12">
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            Mes Modules d'Accès
+            Mes applis d'accès
           </h2>
           <p className="text-gray-600">
-            Accédez directement à vos modules autorisés
+            Accédez directement à vos applis autorisées
           </p>
         </div>
 
@@ -171,7 +171,7 @@ export default function ModulesPage() {
                   className={`w-full ${module.color} text-white font-medium py-3 px-4 rounded-lg transition-colors`}
                   onClick={() => window.open(module.url, '_blank')}
                 >
-                  Accéder au module
+                  Accéder à l'appli
                 </button>
               ) : (
                 <button
@@ -197,11 +197,11 @@ export default function ModulesPage() {
             </div>
             <div className="flex items-start space-x-2">
               <span className="text-blue-600 font-bold">2.</span>
-              <p>Cliquez sur le bouton d'accès du module souhaité</p>
+              <p>Cliquez sur le bouton d'accès de l'appli souhaitée</p>
             </div>
             <div className="flex items-start space-x-2">
               <span className="text-blue-600 font-bold">3.</span>
-              <p>Vous êtes automatiquement connecté au module</p>
+              <p>Vous êtes automatiquement connecté à l'appli</p>
             </div>
           </div>
         </div>

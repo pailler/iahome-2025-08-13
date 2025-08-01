@@ -127,33 +127,28 @@ export async function middleware(request: NextRequest) {
     if (moduleName) {
       console.log('🔍 Vérification de l\'abonnement pour le module:', moduleName);
       
-      // Temporairement, permettre l'accès à Stable Diffusion même sans abonnement pour les tests
-      if (moduleName === 'stablediffusion') {
-        console.log('⚠️ Accès temporaire autorisé à Stable Diffusion pour les tests');
-      } else {
-        try {
-          const response = await fetch(`${request.nextUrl.origin}/api/check-subscription?module=${moduleName}&userId=${user.id}`);
-          
-          if (response.ok) {
-            const data = await response.json();
-            if (!data.hasActiveSubscription) {
-              console.log('❌ Aucun abonnement actif pour le module:', moduleName);
-              
-              if (isProtectedApiRoute) {
-                return NextResponse.json(
-                  { error: 'Abonnement requis pour accéder à ce module' },
-                  { status: 403 }
-                );
-              }
-
-              const subscriptionUrl = new URL('/abonnements', request.url);
-              subscriptionUrl.searchParams.set('module', moduleName);
-              return NextResponse.redirect(subscriptionUrl);
+      try {
+        const response = await fetch(`${request.nextUrl.origin}/api/check-subscription?module=${moduleName}&userId=${user.id}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (!data.hasActiveSubscription) {
+            console.log('❌ Aucun abonnement actif pour le module:', moduleName);
+            
+            if (isProtectedApiRoute) {
+              return NextResponse.json(
+                { error: 'Abonnement requis pour accéder à ce module' },
+                { status: 403 }
+              );
             }
+
+            const subscriptionUrl = new URL('/abonnements', request.url);
+            subscriptionUrl.searchParams.set('module', moduleName);
+            return NextResponse.redirect(subscriptionUrl);
           }
-        } catch (error) {
-          console.log('❌ Erreur lors de la vérification de l\'abonnement:', error);
         }
+      } catch (error) {
+        console.log('❌ Erreur lors de la vérification de l\'abonnement:', error);
       }
     }
   }
@@ -163,7 +158,6 @@ export async function middleware(request: NextRequest) {
 }
 
 function getModuleNameFromPath(pathname: string): string | null {
-  if (pathname.includes('stablediffusion')) return 'stablediffusion';
   if (pathname.includes('module')) return 'module';
   return null;
 }

@@ -32,6 +32,11 @@ export default function CardDetailPage() {
   const [session, setSession] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
   const [selectedCards, setSelectedCards] = useState<any[]>([]);
+  const [iframeModal, setIframeModal] = useState<{isOpen: boolean, url: string, title: string}>({
+    isOpen: false,
+    url: '',
+    title: ''
+  });
 
   // Vérifier la session
   useEffect(() => {
@@ -103,32 +108,83 @@ export default function CardDetailPage() {
       return;
     }
 
-    try {
-      const response = await fetch('/api/generate-magic-link', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          subscriptionId: `${moduleName.toLowerCase()}-sub-789`,
-          moduleName: moduleName.toLowerCase(),
-          userEmail: user.email,
-          redirectUrl: `https://${moduleName.toLowerCase()}.regispailler.fr`
-        }),
-      });
+    // Vérifier si c'est un module qui nécessite un magic link
+                                                         if (false) { // Aucun module avec limitation de temps
+      try {
+        const response = await fetch('/api/generate-magic-link', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            subscriptionId: `${moduleName.toLowerCase()}-sub-789`,
+            moduleName: moduleName.toLowerCase(),
+            userEmail: user.email,
+            redirectUrl: `https://${moduleName.toLowerCase()}.regispailler.fr`
+          }),
+        });
 
-      if (response.ok) {
-        const { magicLinkUrl } = await response.json();
-        console.log('🔗 Magic link généré:', magicLinkUrl);
-        window.open(magicLinkUrl, '_blank');
-      } else {
-        console.error('Erreur lors de la génération du magic link');
+        if (response.ok) {
+          const { magicLinkUrl } = await response.json();
+          console.log('🔗 Magic link généré:', magicLinkUrl);
+          window.open(magicLinkUrl, '_blank');
+        } else {
+          console.error('Erreur lors de la génération du magic link');
+          alert('Erreur lors de la génération du lien d\'accès');
+        }
+      } catch (error) {
+        console.error('Erreur:', error);
         alert('Erreur lors de la génération du lien d\'accès');
       }
-    } catch (error) {
-      console.error('Erreur:', error);
-      alert('Erreur lors de la génération du lien d\'accès');
+    } else if (moduleName === 'IA metube' || moduleName === 'IAmetube') {
+      // Accès direct pour IA metube
+      console.log('🔍 Accès direct vers: https://metube.regispailler.fr');
+      window.open('https://metube.regispailler.fr', '_blank');
+    } else {
+                                           // Accès direct pour les autres modules
+                                     const moduleUrls: { [key: string]: string } = {
+                                       'IAphoto': 'https://iaphoto.regispailler.fr',
+                                       'IAvideo': 'https://iavideo.regispailler.fr',
+                                       'Librespeed': 'https://librespeed.regispailler.fr',
+                                       'PSitransfer': 'https://psitransfer.regispailler.fr',
+                                       'PDF+': 'https://pdfplus.regispailler.fr',
+                                     };
+      
+      const directUrl = moduleUrls[moduleName];
+      if (directUrl) {
+        console.log('🔍 Accès direct vers:', directUrl);
+        window.open(directUrl, '_blank');
+      } else {
+        // Fallback : essayer un magic link
+        try {
+          const response = await fetch('/api/generate-magic-link', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: user.id,
+              subscriptionId: `${moduleName.toLowerCase()}-sub-789`,
+              moduleName: moduleName.toLowerCase(),
+              userEmail: user.email,
+              redirectUrl: `https://${moduleName.toLowerCase()}.regispailler.fr`
+            }),
+          });
+
+          if (response.ok) {
+            const { magicLinkUrl } = await response.json();
+            console.log('🔗 Magic link généré:', magicLinkUrl);
+            window.open(magicLinkUrl, '_blank');
+          } else {
+            console.error('Erreur lors de la génération du magic link');
+            alert('Erreur lors de la génération du lien d\'accès');
+          }
+        } catch (error) {
+          console.error('Erreur:', error);
+          alert('Erreur lors de la génération du lien d\'accès');
+        }
+      }
     }
   };
 
@@ -267,24 +323,55 @@ export default function CardDetailPage() {
                 </div>
 
                 <div className="space-y-4">
-                  {/* Bouton d'abonnement */}
-                  <button 
-                    className={`w-full font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2 ${
-                      isCardSelected(card.id)
-                        ? 'bg-green-600 hover:bg-green-700 text-white'
-                        : 'bg-blue-600 hover:bg-blue-700 text-white'
-                    }`}
-                    onClick={() => handleSubscribe(card)}
-                  >
-                    <span>🔐</span>
-                    <span>{isCardSelected(card.id) ? 'Sélectionné' : 'Choisir'}</span>
-                  </button>
+                  {/* Bouton d'abonnement ou d'accès gratuit */}
+                  {card.price === 0 ? (
+                    // Bouton d'accès gratuit pour les modules gratuits
+                    <button 
+                      className="w-full font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white"
+                      onClick={async () => {
+                        // Accès direct pour les modules gratuits
+                        const moduleUrls: { [key: string]: string } = {
+                          'Librespeed': 'https://librespeed.regispailler.fr',
+                          'PSitransfer': 'https://psitransfer.regispailler.fr',
+                          'PDF+': 'https://pdfplus.regispailler.fr',
+                        };
+                        
+                        const directUrl = moduleUrls[card.title];
+                        if (directUrl) {
+                          console.log('🔍 Ouverture de', card.title, 'dans une iframe:', directUrl);
+                          setIframeModal({
+                            isOpen: true,
+                            url: directUrl,
+                            title: card.title
+                          });
+                        } else {
+                          alert(`Module gratuit "${card.title}" - Accès disponible pour les utilisateurs connectés`);
+                        }
+                      }}
+                    >
+                      <span>🆓</span>
+                      <span>Accéder gratuitement</span>
+                    </button>
+                  ) : (
+                    // Bouton de sélection pour les modules payants
+                    <button 
+                      className={`w-full font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2 ${
+                        isCardSelected(card.id)
+                          ? 'bg-green-600 hover:bg-green-700 text-white'
+                          : 'bg-blue-600 hover:bg-blue-700 text-white'
+                      }`}
+                      onClick={() => handleSubscribe(card)}
+                    >
+                      <span>🔐</span>
+                      <span>{isCardSelected(card.id) ? 'Sélectionné' : 'Choisir'}</span>
+                    </button>
+                  )}
 
                   {!session && (
                     <p className="text-sm text-gray-500 text-center">
                       <Link href="/login" className="text-blue-600 hover:text-blue-800">
                         Connectez-vous
-                      </Link> pour vous abonner
+                      </Link> {card.price === 0 ? 'pour accéder' : 'pour vous abonner'}
                     </p>
                   )}
                 </div>
@@ -518,23 +605,94 @@ export default function CardDetailPage() {
         </div>
       </div>
 
-      {/* Section Confirmer la(es) sélection(s) - Bannière bleue */}
-      <section className="bg-blue-600 py-16">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <h2 className="text-3xl font-bold text-white mb-4">
-            Prêt à activer vos sélections ?
-          </h2>
-          <p className="text-blue-100 mb-8 text-lg">
-            Confirmez vos sélections et accédez à tous les outils IA
-          </p>
-          <button
-            onClick={() => router.push('/abonnements')}
-            className="bg-white text-blue-600 font-semibold px-8 py-4 rounded-lg hover:bg-blue-50 transition-colors text-lg shadow-lg"
-          >
-            Confirmer la(es) sélection(s)
-          </button>
+      {/* Section pour les modules gratuits */}
+      {card.price === 0 && (
+        <section className="bg-green-600 py-16">
+          <div className="max-w-7xl mx-auto px-6 text-center">
+            <h2 className="text-3xl font-bold text-white mb-4">
+              Module gratuit - Accès immédiat !
+            </h2>
+            <p className="text-green-100 mb-8 text-lg">
+              Ce module est entièrement gratuit et accessible directement
+            </p>
+            <button
+              onClick={async () => {
+                const moduleUrls: { [key: string]: string } = {
+                  'Librespeed': 'https://librespeed.regispailler.fr',
+                  'PSitransfer': 'https://psitransfer.regispailler.fr',
+                  'PDF+': 'https://pdfplus.regispailler.fr',
+                };
+                
+                const directUrl = moduleUrls[card.title];
+                if (directUrl) {
+                  setIframeModal({
+                    isOpen: true,
+                    url: directUrl,
+                    title: card.title
+                  });
+                } else {
+                  alert(`Module gratuit "${card.title}" - Accès disponible pour les utilisateurs connectés`);
+                }
+              }}
+              className="bg-white text-green-600 font-semibold px-8 py-4 rounded-lg hover:bg-green-50 transition-colors text-lg shadow-lg"
+            >
+              🆓 Accéder maintenant
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* Section Confirmer la(es) sélection(s) - Bannière bleue - seulement pour les modules payants */}
+      {card.price > 0 && (
+        <section className="bg-blue-600 py-16">
+          <div className="max-w-7xl mx-auto px-6 text-center">
+            <h2 className="text-3xl font-bold text-white mb-4">
+              Prêt à activer vos sélections ?
+            </h2>
+            <p className="text-blue-100 mb-8 text-lg">
+              Confirmez vos sélections et accédez à tous les outils IA
+            </p>
+            <button
+              onClick={() => router.push('/selections')}
+              className="bg-white text-blue-600 font-semibold px-8 py-4 rounded-lg hover:bg-blue-50 transition-colors text-lg shadow-lg"
+            >
+              Confirmer la(es) sélection(s)
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* Modal pour l'iframe */}
+      {iframeModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl h-[90vh] flex flex-col">
+            {/* Header de la modal */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {iframeModal.title}
+              </h3>
+              <button
+                onClick={() => setIframeModal({isOpen: false, url: '', title: ''})}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            {/* Contenu de l'iframe */}
+            <div className="flex-1 p-4">
+              <iframe
+                src={iframeModal.url}
+                className="w-full h-full border-0 rounded"
+                title={iframeModal.title}
+                allowFullScreen
+              />
+            </div>
+          </div>
         </div>
-      </section>
+      )}
 
       {/* Footer */}
       <footer className="bg-white border-t border-gray-100 py-6">

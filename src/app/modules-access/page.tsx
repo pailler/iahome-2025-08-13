@@ -11,20 +11,6 @@ interface ModuleConfig {
 
 const MODULES: ModuleConfig[] = [
   {
-    name: 'Stable Diffusion',
-    key: 'stablediffusion',
-    url: 'https://stablediffusion.regispailler.fr',
-    icon: '🎨',
-    color: 'from-purple-600 to-pink-600'
-  },
-  {
-    name: 'IA Tube',
-    key: 'iatube',
-    url: 'https://iatube.regispailler.fr',
-    icon: '📹',
-    color: 'from-blue-600 to-cyan-600'
-  },
-  {
     name: 'IA Metube',
     key: 'iametube',
     url: 'https://iametube.regispailler.fr',
@@ -34,7 +20,7 @@ const MODULES: ModuleConfig[] = [
 ];
 
 export default function ModulesAccess() {
-  const [selectedModules, setSelectedModules] = useState<string[]>(['stablediffusion', 'iatube', 'iametube']);
+  const [selectedModules, setSelectedModules] = useState<string[]>(['iametube']);
   const [activeModule, setActiveModule] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
