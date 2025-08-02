@@ -48,19 +48,19 @@ export default function TopBanner() {
   }, [session, user]);
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 bg-blue-900 text-white py-2 px-8 flex items-center justify-between text-sm">
+    <div className="fixed top-0 left-0 right-0 z-50 bg-white text-gray-800 py-2 px-8 flex items-center justify-between text-sm border-b border-gray-200">
       <div className="font-bold tracking-wide">
-        <a href="/" className="hover:text-blue-200 transition-colors">IAHome</a>
+        <a href="/" className="hover:text-blue-600 transition-colors">IAHome</a>
       </div>
       <div className="flex items-center gap-6">
         <nav className="flex gap-6">
-          <a href="#" className="hover:underline">À propos</a>
-          <a href="#" className="hover:underline">Fonctionnalités</a>
-          <a href="#" className="hover:underline">Contact</a>
+          <a href="#" className="hover:text-blue-600 transition-colors">À propos</a>
+          <a href="#" className="hover:text-blue-600 transition-colors">Fonctionnalités</a>
+          <a href="#" className="hover:text-blue-600 transition-colors">Contact</a>
         </nav>
         {session && (
-          <div className="flex items-center gap-2 ml-4 pl-4 border-l border-blue-700">
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+          <div className="flex items-center gap-2 ml-4 pl-4 border-l border-gray-300">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             <span className="text-xs">
               {role === 'admin' ? '👑 Admin connecté' : '👤 Utilisateur connecté'}
             </span>

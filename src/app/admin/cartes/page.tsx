@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../../utils/supabaseClient";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import Breadcrumb from "../../../components/Breadcrumb";
 
 interface Module {
   id: string;
@@ -92,7 +93,7 @@ export default function AdminModulesPage() {
     try {
       console.log('📡 Tentative de chargement des données depuis Supabase...');
       
-      // Charger les modules (sans les pages détaillées pour l'instant)
+      // Charger les modules avec toutes leurs données
       const { data: modulesData, error: modulesError } = await supabase
         .from('cartes')
         .select('*')
@@ -102,18 +103,21 @@ export default function AdminModulesPage() {
         console.error('❌ Erreur lors du chargement des modules:', modulesError);
       } else {
         console.log('✅ Modules chargés:', modulesData?.length || 0);
+        console.log('📊 Données des modules:', modulesData);
         
-        // Transformer les données (sans pages détaillées pour l'instant)
-        const transformedModules = modulesData?.map(module => ({
+        // Traiter les données pour s'assurer que les champs detail_* existent
+        const processedModules = (modulesData || []).map(module => ({
           ...module,
-          detail_title: '', // Pas de pages détaillées pour l'instant
-          detail_content: '',
-          detail_meta_description: '',
-          detail_slug: '',
-          detail_is_published: false
-        })) || [];
+          // S'assurer que les champs detail_* existent avec des valeurs par défaut
+          detail_title: module.detail_title || '',
+          detail_content: module.detail_content || '',
+          detail_meta_description: module.detail_meta_description || '',
+          detail_slug: module.detail_slug || '',
+          detail_is_published: module.detail_is_published || false
+        }));
         
-        setModules(transformedModules);
+        console.log('🔧 Modules traités avec champs detail_*:', processedModules);
+        setModules(processedModules);
       }
 
     } catch (error) {
@@ -124,6 +128,8 @@ export default function AdminModulesPage() {
   };
 
   const handleEditModule = (module: Module) => {
+    console.log('🔧 Édition du module:', module);
+    console.log('🔧 Données complètes du module:', JSON.stringify(module, null, 2));
     setEditingModule(module);
     setIsAddingModule(false);
     setShowModal(true);
@@ -165,13 +171,27 @@ export default function AdminModulesPage() {
         return;
       }
 
+      // Préparer les données complètes du module (incluant les champs detail_*)
+      const completeModuleData = {
+        ...moduleData,
+        // Ajouter les champs detail_* s'ils existent
+        ...(detailPageData && {
+          detail_title: detailPageData.title || '',
+          detail_content: detailPageData.content || '',
+          detail_meta_description: detailPageData.meta_description || '',
+          detail_is_published: detailPageData.is_published || false
+        })
+      };
+
+      console.log('💾 Données complètes à sauvegarder:', completeModuleData);
+
       let moduleId: string;
 
       if (isAddingModule) {
         // Ajouter le module
         const { data: newModule, error: moduleError } = await supabase
           .from('cartes')
-          .insert([moduleData])
+          .insert([completeModuleData])
           .select()
           .single();
         
@@ -187,7 +207,7 @@ export default function AdminModulesPage() {
         // Modifier le module
         const { error: moduleError } = await supabase
           .from('cartes')
-          .update(moduleData)
+          .update(completeModuleData)
           .eq('id', editingModule!.id);
         
         if (moduleError) {
@@ -199,9 +219,6 @@ export default function AdminModulesPage() {
         moduleId = editingModule!.id;
         console.log('✅ Module modifié avec ID:', moduleId);
       }
-
-      // Pour l'instant, on ne gère que les modules (pas les pages détaillées)
-      // Les pages détaillées seront gérées plus tard quand la table sera créée
 
       fetchData();
       setShowModal(false);
@@ -246,24 +263,18 @@ export default function AdminModulesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* En-tête */}
-        <div className="mb-8">
+    <div className="min-h-screen bg-gray-50">
+      <div className="pt-20">
+        <Breadcrumb />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* En-tête */}
+          <div className="mt-4 mb-8">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Gestion des Modules</h1>
               <p className="text-gray-600 mt-2">Gérez vos modules et leurs pages détaillées intégrées</p>
             </div>
-            <div className="flex items-center space-x-4">
-              <Link 
-                href="https://home.regispailler.fr/admin/" 
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                ← Retour à l'administration
-              </Link>
+                         <div className="flex items-center space-x-4">
               <button
                 onClick={handleAddModule}
                 className="inline-flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -361,17 +372,25 @@ export default function AdminModulesPage() {
 
         {/* Modal d'édition/ajout unifié */}
         {showModal && (
-          <UnifiedModuleModal 
-            module={editingModule}
-            isAdding={isAddingModule}
-            onSave={handleSaveModule}
-            onClose={() => {
-              setShowModal(false);
-              setEditingModule(null);
-              setIsAddingModule(false);
-            }}
-          />
+          <>
+            {editingModule && (
+              <div className="fixed top-4 right-4 bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-2 rounded z-50">
+                <strong>Debug:</strong> Module en cours d'édition: {editingModule.title} (ID: {editingModule.id})
+              </div>
+            )}
+            <UnifiedModuleModal 
+              module={editingModule}
+              isAdding={isAddingModule}
+              onSave={handleSaveModule}
+              onClose={() => {
+                setShowModal(false);
+                setEditingModule(null);
+                setIsAddingModule(false);
+              }}
+            />
+          </>
         )}
+        </div>
       </div>
     </div>
   );
@@ -384,19 +403,72 @@ function UnifiedModuleModal({ module, isAdding, onSave, onClose }: {
   onSave: (moduleData: any, detailPageData?: any) => void;
   onClose: () => void;
 }) {
-  const [formData, setFormData] = useState({
-    // Champs du module
-    title: module?.title || '',
-    description: module?.description || '',
-    category: module?.category || '',
-    price: module?.price || 0,
-    youtube_url: module?.youtube_url || '',
-    // Champs de la page détaillée
-    detail_title: module?.detail_title || '',
-    detail_content: module?.detail_content || '',
-    detail_meta_description: module?.detail_meta_description || '',
-    detail_is_published: module?.detail_is_published || false
+  console.log('🎯 UnifiedModuleModal rendu - module:', module);
+  console.log('🎯 UnifiedModuleModal rendu - isAdding:', isAdding);
+  const [formData, setFormData] = useState(() => {
+    console.log('🏗️ Initialisation du formData avec module:', module);
+    return {
+      // Champs du module
+      title: module?.title || '',
+      description: module?.description || '',
+      category: module?.category || '',
+      price: module?.price || 0,
+      youtube_url: module?.youtube_url || '',
+      // Champs de la page détaillée
+      detail_title: module?.detail_title ?? '',
+      detail_content: module?.detail_content ?? '',
+      detail_meta_description: module?.detail_meta_description ?? '',
+      detail_is_published: module?.detail_is_published ?? false
+    };
   });
+
+  // Mettre à jour le formulaire quand le module change
+  useEffect(() => {
+    console.log('🔄 useEffect triggered - module:', module);
+    console.log('🔄 isAdding:', isAdding);
+    
+    if (module) {
+      console.log('📝 Mise à jour du formulaire avec les données du module:', module);
+      console.log('📝 Titre du module:', module.title);
+      console.log('📝 Description du module:', module.description);
+      console.log('📝 Catégorie du module:', module.category);
+      console.log('📝 Prix du module:', module.price);
+      console.log('📝 Detail title:', module.detail_title, '(type:', typeof module.detail_title, ')');
+      console.log('📝 Detail content:', module.detail_content, '(type:', typeof module.detail_content, ')');
+      console.log('📝 Detail meta description:', module.detail_meta_description, '(type:', typeof module.detail_meta_description, ')');
+      console.log('📝 Detail is published:', module.detail_is_published, '(type:', typeof module.detail_is_published, ')');
+      
+      const newFormData = {
+        title: module.title || '',
+        description: module.description || '',
+        category: module.category || '',
+        price: module.price || 0,
+        youtube_url: module.youtube_url || '',
+        detail_title: module.detail_title ?? '',
+        detail_content: module.detail_content ?? '',
+        detail_meta_description: module.detail_meta_description ?? '',
+        detail_is_published: module.detail_is_published ?? false
+      };
+      
+      console.log('📝 Nouveau formData:', newFormData);
+      setFormData(newFormData);
+    } else if (isAdding) {
+      console.log('➕ Réinitialisation du formulaire pour un nouvel ajout');
+      const emptyFormData = {
+        title: '',
+        description: '',
+        category: '',
+        price: 0,
+        youtube_url: '',
+        detail_title: '',
+        detail_content: '',
+        detail_meta_description: '',
+        detail_is_published: false
+      };
+      console.log('➕ FormData vide:', emptyFormData);
+      setFormData(emptyFormData);
+    }
+  }, [module, isAdding]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -455,6 +527,17 @@ function UnifiedModuleModal({ module, isAdding, onSave, onClose }: {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Titre du module"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Valeur actuelle: "{formData.title}"
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Detail title: "{formData.detail_title}"
+                  </p>
+                  {module && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      ID du module: {module.id}
+                    </p>
+                  )}
                 </div>
 
                 <div>

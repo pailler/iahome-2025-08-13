@@ -212,6 +212,9 @@ export default function EncoursPage() {
 
   // Fonction pour obtenir les conditions d'accès selon le module
   const getAccessConditions = (moduleTitle: string) => {
+    if (moduleTitle === 'IA metube' || moduleTitle === 'IAmetube') {
+      return '12 heures';
+    }
     return 'Accès illimité';
   };
 
@@ -234,9 +237,6 @@ export default function EncoursPage() {
           <div className="max-w-7xl mx-auto px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <Link href="/" className="text-blue-600 hover:text-blue-700 font-semibold">
-                  ← Retour à l'accueil
-                </Link>
                 <h1 className="text-2xl font-bold text-gray-900">📦 Mes Abonnements en Cours</h1>
               </div>
             </div>
@@ -275,19 +275,9 @@ export default function EncoursPage() {
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Link href="/" className="text-blue-600 hover:text-blue-700 font-semibold">
-              ← Retour à l'accueil
-            </Link>
             <h1 className="text-2xl font-bold text-gray-900">📦 Mes Abonnements en Cours</h1>
           </div>
-          <div className="flex items-center space-x-4">
-            <Link 
-              href="/selections" 
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Gérer les sélections
-            </Link>
-          </div>
+
         </div>
       </div>
 
@@ -436,27 +426,9 @@ export default function EncoursPage() {
                           }
 
                             // Accès direct pour tous les modules dans une iframe
-                            // Accès direct pour tous les autres modules dans une iframe
-                            const moduleUrls: { [key: string]: string } = {
-                              'IA metube': 'https://metube.regispailler.fr',
-                              'IAmetube': 'https://metube.regispailler.fr',
-                              'IAphoto': 'https://iaphoto.regispailler.fr',
-                              'IAvideo': 'https://iavideo.regispailler.fr',
-                              'Librespeed': 'https://librespeed.regispailler.fr',
-                              'PSitransfer': 'https://psitransfer.regispailler.fr',
-                              'PDF+': 'https://pdfplus.regispailler.fr',
-                            };
-                            
-                            const directUrl = moduleUrls[module.title];
-                            if (directUrl) {
-                              console.log('🔍 Ouverture de', module.title, 'dans une iframe:', directUrl);
-                              setIframeModal({
-                                isOpen: true,
-                                url: directUrl,
-                                title: module.title
-                              });
-                            } else {
-                              // Fallback : essayer un magic link
+                            if (module.title === 'IA metube' || module.title === 'IAmetube') {
+                              // Générer un magic link de 12 heures pour IA metube
+                              console.log('🔍 Génération d\'un magic link de 12 heures pour IA metube');
                               const magicLink = await generateModuleMagicLink(module.title);
                               if (magicLink) {
                                 setIframeModal({
@@ -466,6 +438,37 @@ export default function EncoursPage() {
                                 });
                               } else {
                                 alert('Erreur lors de la génération du lien d\'accès');
+                              }
+                            } else {
+                              // Accès direct pour tous les autres modules dans une iframe
+                              const moduleUrls: { [key: string]: string } = {
+                                'IAphoto': 'https://iaphoto.regispailler.fr',
+                                'IAvideo': 'https://iavideo.regispailler.fr',
+                                'Librespeed': 'https://librespeed.regispailler.fr',
+                                'PSitransfer': 'https://psitransfer.regispailler.fr',
+                                'PDF+': 'https://pdfplus.regispailler.fr',
+                              };
+                              
+                              const directUrl = moduleUrls[module.title];
+                              if (directUrl) {
+                                console.log('🔍 Ouverture de', module.title, 'dans une iframe:', directUrl);
+                                setIframeModal({
+                                  isOpen: true,
+                                  url: directUrl,
+                                  title: module.title
+                                });
+                              } else {
+                                // Fallback : essayer un magic link
+                                const magicLink = await generateModuleMagicLink(module.title);
+                                if (magicLink) {
+                                  setIframeModal({
+                                    isOpen: true,
+                                    url: magicLink,
+                                    title: module.title
+                                  });
+                                } else {
+                                  alert('Erreur lors de la génération du lien d\'accès');
+                                }
                               }
                             }
                         }}

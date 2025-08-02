@@ -256,9 +256,6 @@ export default function SelectionsPage() {
       <div className="py-12">
         <div className="bg-white p-8 rounded shadow flex flex-col gap-4 w-full max-w-2xl mb-8">
           <div className="flex items-center space-x-4">
-            <Link href="/" className="text-blue-600 hover:text-blue-700 font-semibold">
-              ← Retour à l'accueil
-            </Link>
             <h1 className="text-2xl font-bold text-gray-900">🛒 Gestion des Sélections</h1>
           </div>
           <div className="flex items-center space-x-4">

@@ -34,12 +34,7 @@ export default function SuccessPage() {
           )}
 
           <div className="space-y-4">
-            <Link 
-              href="/"
-              className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-colors"
-            >
-              Retour à l'accueil
-            </Link>
+
             
             <Link 
               href="/test-payment"

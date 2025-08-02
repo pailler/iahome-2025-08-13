@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../utils/supabaseClient";
 import { useRouter } from 'next/navigation';
 import Link from "next/link";
-import Header from '../components/Header';
+import Breadcrumb from '../components/Breadcrumb';
 
 export default function Home() {
   const router = useRouter();
@@ -464,8 +464,39 @@ export default function Home() {
     }
   };
 
+  const generateModuleMagicLink = async (moduleName: string) => {
+    if (!user?.id) return null;
+    
+    try {
+      const response = await fetch('/api/generate-magic-link', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          moduleName: moduleName,
+          durationMinutes: moduleName === 'IA metube' || moduleName === 'IAmetube' ? 720 : 1440 // 12h pour IA metube, 24h pour les autres
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success && data.accessUrl) {
+        return data.accessUrl;
+      } else {
+        console.error('Erreur génération magic link:', data.error);
+        return null;
+      }
+    } catch (error) {
+      console.error('Erreur génération magic link:', error);
+      return null;
+    }
+  };
+
   // Fonction pour obtenir les conditions d'accès selon le module
   const getAccessConditions = (moduleTitle: string) => {
+    if (moduleTitle === 'IA metube' || moduleTitle === 'IAmetube') {
+      return '12 heures';
+    }
     return 'Accès illimité';
   };
 
@@ -791,58 +822,55 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-blue-50 font-sans">
-      {/* En-tête (Header) */}
-      <Header />
+      <Breadcrumb />
 
       {/* Section héros */}
-      <section className="bg-white py-12">
+      <section className="bg-gradient-to-r from-blue-600 to-blue-800 py-16">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
             {/* Contenu texte */}
             <div className="flex-1 max-w-2xl">
-              <h1 className="text-4xl lg:text-5xl font-bold text-blue-900 leading-tight mb-4">
+              <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight mb-4">
                 Accès direct à la puissance et aux outils IA
               </h1>
-              <p className="text-lg text-gray-600 mb-6">
-                Boostez votre productivité dès maintenant
+              <p className="text-xl text-blue-100 mb-6">
+                Build with ready-made apps and templates created by the Bubble community.
               </p>
               
               {/* Barre de recherche */}
               <div className="relative max-w-lg">
-                                                 <input
+                <input
                   type="text"
-                  placeholder="Recherche parmi les applis"
-                  className="w-full px-6 py-4 pl-12 pr-16 rounded-xl border-2 border-gray-200 bg-white text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
+                  placeholder="Search for a template"
+                  className="w-full px-6 py-4 pl-12 pr-16 rounded-xl border-2 border-white/20 bg-white/10 backdrop-blur-sm text-white placeholder-white/70 focus:outline-none focus:border-white focus:ring-4 focus:ring-white/20 transition-all"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                 />
                 <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-white/70">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" />
                   </svg>
                 </div>
-                                 <button className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                   Rechercher
-                 </button>
+                <button className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors font-medium">
+                  Search
+                </button>
               </div>
-              
-
             </div>
             
             {/* Illustration */}
             <div className="flex-1 flex justify-center">
               <div className="relative w-80 h-64">
                 {/* Formes géométriques abstraites */}
-                <div className="absolute top-0 left-0 w-24 h-24 bg-red-400 rounded-full opacity-70 animate-pulse"></div>
-                <div className="absolute top-16 right-0 w-20 h-20 bg-blue-400 rounded-lg opacity-70 animate-bounce"></div>
-                <div className="absolute bottom-0 left-16 w-20 h-20 bg-yellow-400 transform rotate-45 opacity-70 animate-pulse"></div>
-                <div className="absolute bottom-16 right-16 w-16 h-16 bg-green-400 rounded-full opacity-70 animate-bounce"></div>
+                <div className="absolute top-0 left-0 w-24 h-24 bg-red-400 rounded-full opacity-80 animate-pulse"></div>
+                <div className="absolute top-16 right-0 w-20 h-20 bg-yellow-400 rounded-lg opacity-80 animate-bounce"></div>
+                <div className="absolute bottom-0 left-16 w-20 h-20 bg-green-400 transform rotate-45 opacity-80 animate-pulse"></div>
+                <div className="absolute bottom-16 right-16 w-16 h-16 bg-white rounded-full opacity-80 animate-bounce"></div>
                 
                 {/* Éléments centraux */}
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
-                    <div className="text-5xl font-bold text-blue-900/20 mb-3">AI</div>
-                    <div className="text-xs text-gray-500">Intelligence Artificielle</div>
+                    <div className="text-5xl font-bold text-white/30 mb-3">AI</div>
+                    <div className="text-xs text-white/70">Intelligence Artificielle</div>
                   </div>
                 </div>
               </div>
@@ -981,7 +1009,7 @@ export default function Home() {
                           
                           // Mapping spécifique pour certains modules
                                     if (title.includes('iametube')) {
-            imageSrc = '/images/iatube.jpg';
+            imageSrc = '/images/iametube-interface.svg';
                           } else if (title.includes('iaphoto')) {
                             imageSrc = '/images/iaphoto.jpg';
                           } else if (title.includes('chatgpt') || title.includes('gpt')) {
@@ -993,7 +1021,7 @@ export default function Home() {
                           } else {
                             // Attribution d'images par catégorie pour tous les autres modules
                             if (category.includes('video')) {
-                              imageSrc = '/images/iametube.jpg';
+                              imageSrc = '/images/iametube-interface.svg';
                             } else if (category.includes('photo')) {
                               imageSrc = '/images/iaphoto.jpg';
                             } else if (category.includes('assistant') || category.includes('ai')) {
@@ -1039,10 +1067,7 @@ export default function Home() {
                               📊 {module.usage_count} utilisations
                             </span>
                           )}
-                          {/* Conditions d'accès */}
-                          <span className="inline-block px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded">
-                            ⏱️ {getAccessConditions(module.title)}
-                          </span>
+
                         </div>
 
                                                  {/* Prix et bouton */}
@@ -1051,8 +1076,8 @@ export default function Home() {
                              €{module.price}
                            </div>
                            <div className="flex gap-2">
-                             {/* Bouton d'accès direct pour les modules avec abonnement actif ou modules gratuits */}
-                             {session && (userSubscriptions[module.title] || module.price === 0) && (
+                             {/* Bouton d'accès direct pour les modules avec abonnement actif, modules gratuits, ou IA metube avec accès temporaire */}
+                             {session && (userSubscriptions[module.title] || module.price === 0 || module.title === 'IA metube' || module.title === 'IAmetube') && (
                                <button 
                                  className="px-4 py-2 rounded-lg font-semibold text-sm bg-green-600 hover:bg-green-700 text-white transition-colors"
                                  onClick={async () => {
@@ -1070,13 +1095,18 @@ export default function Home() {
 
                                    // Accès direct pour tous les modules dans une iframe
                                    if (module.title === 'IA metube' || module.title === 'IAmetube') {
-                                     // Accès direct pour IA metube dans une iframe (module avec abonnement)
-                                     console.log('🔍 Ouverture de metube dans une iframe');
-                                     setIframeModal({
-                                       isOpen: true,
-                                       url: 'https://metube.regispailler.fr',
-                                       title: module.title
-                                     });
+                                     // Générer un magic link de 12 heures pour IA metube
+                                     console.log('🔍 Génération d\'un magic link de 12 heures pour IA metube');
+                                     const magicLink = await generateModuleMagicLink(module.title);
+                                     if (magicLink) {
+                                       setIframeModal({
+                                         isOpen: true,
+                                         url: magicLink,
+                                         title: module.title
+                                       });
+                                     } else {
+                                       alert('Erreur lors de la génération du lien d\'accès');
+                                     }
                                    } else {
                                      // Accès direct pour tous les autres modules dans une iframe
                                      const moduleUrls: { [key: string]: string } = {

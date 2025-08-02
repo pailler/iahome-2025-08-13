@@ -79,12 +79,7 @@ export default function ProxyPage({ params }: { params: Promise<{ module: string
           <div className="text-red-600 text-6xl mb-4">❌</div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Erreur de chargement</h1>
           <p className="text-gray-600 mb-4">{error}</p>
-          <button 
-            onClick={() => window.history.back()}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Retour
-          </button>
+
         </div>
       </div>
     );

@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../utils/supabaseClient";
 import Link from "next/link";
+import Breadcrumb from "../../components/Breadcrumb";
 import Header from '../../components/Header';
 
 interface BlogArticle {
@@ -263,7 +264,9 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="pt-20">
+        <Breadcrumb />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* En-tête */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
@@ -271,12 +274,7 @@ export default function AdminPage() {
               <h1 className="text-3xl font-bold text-gray-900">Administration Globale</h1>
               <p className="text-gray-600 mt-2">Gérez tous les aspects de votre plateforme</p>
             </div>
-            <Link 
-              href="/" 
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              ← Retour à l'accueil
-            </Link>
+
           </div>
         </div>
 
@@ -631,6 +629,7 @@ export default function AdminPage() {
             )}
           </>
         )}
+        </div>
       </div>
     </div>
   );

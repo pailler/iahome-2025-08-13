@@ -94,24 +94,22 @@ export default function Header() {
   };
 
   return (
-    <header className="w-full bg-white shadow-sm border-b border-gray-100 mt-10">
+    <header className="fixed top-0 left-0 right-0 w-full bg-white shadow-sm border-b border-gray-100 z-50">
       <div className="max-w-7xl mx-auto px-6 py-2">
         <div className="flex items-center justify-between">
           {/* Logo et navigation */}
           <div className="flex items-center space-x-8">
             {/* Logo "IAhome" */}
-            <div className="flex items-center space-x-2">
+            <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
               <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                 <span className="text-white font-bold text-lg">I</span>
               </div>
               <span className="text-xl font-bold text-blue-900">IAhome</span>
-            </div>
+            </Link>
             
             {/* Menu de navigation */}
             <nav className="hidden md:flex items-center space-x-6">
-              <a href="#" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">Ressources</a>
-              <a href="#" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">Communauté</a>
-              <a href="#" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">Exemples</a>
+              <Link href="/community" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">Communauté</Link>
               <Link href="/blog" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">Blog</Link>
             </nav>
           </div>
@@ -136,12 +134,17 @@ export default function Header() {
 
                 
                 <span className="text-sm text-gray-600">{user?.email}</span>
-                <div className={`px-3 py-1 rounded-full text-xs font-bold ${
-                  role === 'admin' 
-                    ? 'bg-red-100 text-red-700' 
-                    : 'bg-green-100 text-green-700'
-                }`}>
-                  {role === 'admin' ? 'ADMIN' : 'CONNECTÉ'}
+                
+                {/* Indicateur en ligne */}
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <div className={`px-3 py-1 rounded-full text-xs font-bold ${
+                    role === 'admin' 
+                      ? 'bg-red-100 text-red-700' 
+                      : 'bg-green-100 text-green-700'
+                  }`}>
+                    {role === 'admin' ? 'ADMIN' : 'CONNECTÉ'}
+                  </div>
                 </div>
                 
                 <Link 

@@ -4,6 +4,7 @@ import { supabase } from "../../../utils/supabaseClient";
 import { useSession, useUser } from "@supabase/auth-helpers-react";
 import Link from "next/link";
 import Header from '../../../components/Header';
+import Footer from '../../../components/Footer';
 
 interface BlogArticle {
   id: string;
@@ -346,14 +347,7 @@ export default function AdminBlogPage() {
               </p>
             </div>
             <div className="flex space-x-4">
-              <Link
-                href="https://home.regispailler.fr/admin/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-              >
-                ← Retour à l'admin
-              </Link>
+
               <button
                 onClick={() => setShowForm(true)}
                 className="inline-flex items-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold shadow-lg"
@@ -668,6 +662,7 @@ export default function AdminBlogPage() {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 } 

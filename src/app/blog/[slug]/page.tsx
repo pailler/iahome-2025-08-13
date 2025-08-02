@@ -2,7 +2,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../../utils/supabaseClient";
 import Link from "next/link";
+import Breadcrumb from "../../../components/Breadcrumb";
 import { useParams } from "next/navigation";
+import Footer from "../../../components/Footer";
 
 interface BlogArticle {
   id: string;
@@ -99,19 +101,9 @@ export default function BlogArticlePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
+      <Breadcrumb />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Navigation */}
-        <div className="mb-8">
-          <Link
-            href="/blog"
-            className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Retour au blog
-          </Link>
-        </div>
+
 
         {/* Article */}
         <article className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -184,6 +176,7 @@ export default function BlogArticlePage() {
           </Link>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

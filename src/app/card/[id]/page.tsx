@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '../../../utils/supabaseClient';
 import Link from 'next/link';
 import Image from 'next/image';
+import Breadcrumb from '../../../components/Breadcrumb';
 
 interface Card {
   id: string;
@@ -214,7 +215,7 @@ export default function CardDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Chargement de la carte...</p>
@@ -225,7 +226,7 @@ export default function CardDetailPage() {
 
   if (!card) {
     return (
-      <div className="min-h-screen bg-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Carte non trouvée</h1>
           <Link href="/" className="text-blue-600 hover:text-blue-800">
@@ -237,70 +238,44 @@ export default function CardDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-blue-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-100 pt-12">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
+      {/* Fil d'Ariane amélioré */}
+      <div className="bg-white/60 backdrop-blur-sm border-b border-gray-200/50 pt-20">
         <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link href="/" className="flex items-center space-x-2 text-blue-600 hover:text-blue-800">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-                </svg>
-                <span>Retour</span>
-              </Link>
-              <div className="w-px h-6 bg-gray-300"></div>
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">I</span>
-                </div>
-                <span className="text-xl font-bold text-blue-900">IAhome</span>
-              </div>
-            </div>
-            
-            {session && (
-              <div className="flex items-center space-x-3">
-                <span className="text-sm text-gray-600">{user?.email}</span>
-                <button 
-                  className="text-gray-700 font-medium px-3 py-1 rounded hover:bg-gray-100 text-sm" 
-                  onClick={async () => { 
-                    await supabase.auth.signOut(); 
-                    router.push('/login'); 
-                  }}
-                >
-                  Se déconnecter
-                </button>
-              </div>
-            )}
-          </div>
+          <Breadcrumb 
+            items={[
+              { label: 'Accueil', href: '/' },
+              { label: card?.title || 'Chargement...' }
+            ]}
+          />
         </div>
-      </header>
+      </div>
 
-      {/* Contenu principal */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        <div className="space-y-8">
+      {/* Contenu principal avec animations */}
+      <main className="max-w-7xl mx-auto px-6 py-12">
+        <div className="space-y-12">
           {/* Grille principale */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             {/* Colonne principale */}
             <div className="lg:col-span-2 space-y-8">
-              {/* En-tête de la carte */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-                <div className="flex items-start justify-between mb-6">
-                  <div>
-                    <span className="inline-block px-3 py-1 bg-green-100 text-green-700 text-sm font-bold rounded-full mb-4">
+              {/* En-tête de la carte avec design moderne */}
+              <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 p-8 hover:shadow-2xl transition-all duration-300">
+                <div className="mb-8">
+                  <div className="flex-1">
+                    <span className="inline-block px-4 py-2 bg-gradient-to-r from-green-400 to-emerald-500 text-white text-sm font-bold rounded-full mb-6 shadow-lg">
                       {card.category?.toUpperCase() || 'BUILDING BLOCKS'}
                     </span>
-                    <h1 className="text-4xl font-bold text-blue-900 mb-4">{card.title}</h1>
-                    <p className="text-xl text-gray-600 leading-relaxed">{card.description}</p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-3xl font-bold text-blue-900 mb-2">€{card.price}</div>
-                    <div className="text-sm text-gray-500">par mois</div>
+                    <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-6 leading-tight">
+                      {card.title}
+                    </h1>
+                    <p className="text-xl text-gray-600 leading-relaxed max-w-2xl">
+                      {card.description}
+                    </p>
                   </div>
                 </div>
 
-                {/* Vidéo YouTube SDNext */}
-                <div className="w-full aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                {/* Vidéo YouTube avec design amélioré */}
+                <div className="w-full aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl overflow-hidden shadow-2xl hover:shadow-3xl transition-all duration-300">
                   <iframe
                     className="w-full h-full"
                     src="https://www.youtube.com/embed/inW3l-DpA7U?rel=0&modestbranding=1"
@@ -313,21 +288,23 @@ export default function CardDetailPage() {
               </div>
             </div>
 
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Carte d'action */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <div className="text-center mb-6">
-                  <div className="text-3xl font-bold text-blue-900 mb-2">€{card.price}</div>
-                  <div className="text-sm text-gray-500">par mois</div>
+            {/* Sidebar moderne */}
+            <div className="space-y-8">
+              {/* Carte d'action avec design premium */}
+              <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 p-8 hover:shadow-2xl transition-all duration-300">
+                <div className="text-center mb-8">
+                  <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4 rounded-2xl shadow-lg mb-4">
+                    <div className="text-4xl font-bold mb-1">€{card.price}</div>
+                    <div className="text-sm opacity-90">par mois</div>
+                  </div>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {/* Bouton d'abonnement ou d'accès gratuit */}
                   {card.price === 0 ? (
                     // Bouton d'accès gratuit pour les modules gratuits
                     <button 
-                      className="w-full font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white"
+                      className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
                       onClick={async () => {
                         // Accès direct pour les modules gratuits
                         const moduleUrls: { [key: string]: string } = {
@@ -349,49 +326,53 @@ export default function CardDetailPage() {
                         }
                       }}
                     >
-                      <span>🆓</span>
+                      <span className="text-xl">🆓</span>
                       <span>Accéder gratuitement</span>
                     </button>
                   ) : (
                     // Bouton de sélection pour les modules payants
                     <button 
-                      className={`w-full font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2 ${
+                      className={`w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 ${
                         isCardSelected(card.id)
-                          ? 'bg-green-600 hover:bg-green-700 text-white'
-                          : 'bg-blue-600 hover:bg-blue-700 text-white'
+                          ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white'
+                          : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white'
                       }`}
                       onClick={() => handleSubscribe(card)}
                     >
-                      <span>🔐</span>
+                      <span className="text-xl">🔐</span>
                       <span>{isCardSelected(card.id) ? 'Sélectionné' : 'Choisir'}</span>
                     </button>
                   )}
 
                   {!session && (
-                    <p className="text-sm text-gray-500 text-center">
-                      <Link href="/login" className="text-blue-600 hover:text-blue-800">
-                        Connectez-vous
-                      </Link> {card.price === 0 ? 'pour accéder' : 'pour vous abonner'}
-                    </p>
+                    <div className="bg-gray-50 rounded-xl p-4 text-center">
+                      <p className="text-sm text-gray-600">
+                        <Link href="/login" className="text-blue-600 hover:text-blue-800 font-medium">
+                          Connectez-vous
+                        </Link> {card.price === 0 ? 'pour accéder' : 'pour vous abonner'}
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>
 
-              {/* Liens utiles */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h3 className="text-lg font-semibold text-blue-900 mb-4">Liens utiles</h3>
-                <div className="space-y-3">
+              {/* Liens utiles avec design moderne */}
+              <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 p-8 hover:shadow-2xl transition-all duration-300">
+                <h3 className="text-xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-6">Liens utiles</h3>
+                <div className="space-y-4">
                   {card.documentation_url && (
                     <a 
                       href={card.documentation_url} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="flex items-center space-x-3 text-gray-700 hover:text-blue-600 transition-colors"
+                      className="flex items-center space-x-4 text-gray-700 hover:text-blue-600 transition-all duration-200 p-3 rounded-xl hover:bg-blue-50 group"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-                      </svg>
-                      <span>Documentation</span>
+                      <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-blue-600">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                        </svg>
+                      </div>
+                      <span className="font-medium">Documentation</span>
                     </a>
                   )}
                   
@@ -400,12 +381,14 @@ export default function CardDetailPage() {
                       href={card.github_url} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="flex items-center space-x-3 text-gray-700 hover:text-blue-600 transition-colors"
+                      className="flex items-center space-x-4 text-gray-700 hover:text-blue-600 transition-all duration-200 p-3 rounded-xl hover:bg-blue-50 group"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
-                      </svg>
-                      <span>Code source</span>
+                      <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center group-hover:bg-gray-200 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-600">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
+                        </svg>
+                      </div>
+                      <span className="font-medium">Code source</span>
                     </a>
                   )}
                   
@@ -414,26 +397,28 @@ export default function CardDetailPage() {
                       href={card.demo_url} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="flex items-center space-x-3 text-gray-700 hover:text-blue-600 transition-colors"
+                      className="flex items-center space-x-4 text-gray-700 hover:text-blue-600 transition-all duration-200 p-3 rounded-xl hover:bg-blue-50 group"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9" />
-                      </svg>
-                      <span>Démo en ligne</span>
+                      <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center group-hover:bg-green-200 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-green-600">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9" />
+                        </svg>
+                      </div>
+                      <span className="font-medium">Démo en ligne</span>
                     </a>
                   )}
                 </div>
               </div>
 
-              {/* Prérequis */}
+              {/* Prérequis avec design moderne */}
               {card.requirements && card.requirements.length > 0 && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                  <h3 className="text-lg font-semibold text-blue-900 mb-4">Prérequis</h3>
-                  <div className="space-y-2">
+                <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 p-8 hover:shadow-2xl transition-all duration-300">
+                  <h3 className="text-xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-6">Prérequis</h3>
+                  <div className="space-y-4">
                     {card.requirements.map((requirement, index) => (
-                      <div key={index} className="flex items-start space-x-2">
-                        <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
-                        <span className="text-sm text-gray-700">{requirement}</span>
+                      <div key={index} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-xl">
+                        <div className="w-3 h-3 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                        <span className="text-gray-700 font-medium">{requirement}</span>
                       </div>
                     ))}
                   </div>
@@ -444,23 +429,30 @@ export default function CardDetailPage() {
         </div>
       </main>
 
-      {/* Zones de contenu en pleine largeur sous la vidéo */}
+      {/* Zones de contenu en pleine largeur avec design moderne */}
       
       {/* Fonctionnalités - Pleine largeur */}
       {card.features && card.features.length > 0 && (
-        <div className="bg-white border-t border-gray-100 py-16">
+        <div className="bg-gradient-to-br from-white to-blue-50/50 border-t border-gray-200/50 py-20">
           <div className="max-w-7xl mx-auto px-6">
-            <h2 className="text-3xl font-bold text-blue-900 mb-8 text-center">Fonctionnalités principales</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-4">
+                Fonctionnalités principales
+              </h2>
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                Découvrez toutes les fonctionnalités avancées de {card.title}
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {card.features.map((feature, index) => (
-                <div key={index} className="bg-gray-50 rounded-lg p-6">
-                  <div className="flex items-start space-x-3">
-                    <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-green-600">
+                <div key={index} className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-emerald-500 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 shadow-lg">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-white">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                       </svg>
                     </div>
-                    <span className="text-gray-700 font-medium">{feature}</span>
+                    <span className="text-gray-700 font-semibold text-lg">{feature}</span>
                   </div>
                 </div>
               ))}
@@ -471,19 +463,28 @@ export default function CardDetailPage() {
 
       {/* Exemples d'utilisation - Pleine largeur */}
       {card.usage_examples && card.usage_examples.length > 0 && (
-        <div className="bg-gray-50 py-16">
+        <div className="bg-gradient-to-br from-gray-50 to-indigo-50/30 py-20">
           <div className="max-w-7xl mx-auto px-6">
-            <h2 className="text-3xl font-bold text-blue-900 mb-8 text-center">Exemples d'utilisation</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-4">
+                Exemples d'utilisation
+              </h2>
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                Voyez comment {card.title} peut transformer votre workflow
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               {card.usage_examples.map((example, index) => (
-                <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
-                  <div className="flex items-start space-x-3 mb-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-blue-600 font-bold text-sm">{index + 1}</span>
+                <div key={index} className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+                  <div className="flex items-start space-x-4 mb-6">
+                    <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                      <span className="text-white font-bold text-lg">{index + 1}</span>
                     </div>
-                    <h3 className="text-lg font-semibold text-blue-900">Exemple {index + 1}</h3>
+                    <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent">
+                      Exemple {index + 1}
+                    </h3>
                   </div>
-                  <p className="text-gray-700 leading-relaxed">{example}</p>
+                  <p className="text-gray-700 leading-relaxed text-lg">{example}</p>
                 </div>
               ))}
             </div>
@@ -493,19 +494,28 @@ export default function CardDetailPage() {
 
       {/* Étapes d'installation - Pleine largeur */}
       {card.installation_steps && card.installation_steps.length > 0 && (
-        <div className="bg-white py-16">
+        <div className="bg-gradient-to-br from-white to-blue-50/50 py-20">
           <div className="max-w-7xl mx-auto px-6">
-            <h2 className="text-3xl font-bold text-blue-900 mb-8 text-center">Installation</h2>
-            <div className="max-w-4xl mx-auto">
-              <div className="space-y-6">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-4">
+                Installation
+              </h2>
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                Guide d'installation simple et rapide
+              </p>
+            </div>
+            <div className="max-w-5xl mx-auto">
+              <div className="space-y-8">
                 {card.installation_steps.map((step, index) => (
-                  <div key={index} className="flex items-start space-x-6">
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-blue-600 font-bold text-lg">{index + 1}</span>
+                  <div key={index} className="flex items-start space-x-8 bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 p-8 hover:shadow-2xl transition-all duration-300">
+                    <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                      <span className="text-white font-bold text-2xl">{index + 1}</span>
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-blue-900 mb-2">Étape {index + 1}</h3>
-                      <p className="text-gray-700 leading-relaxed text-lg">{step}</p>
+                      <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-4">
+                        Étape {index + 1}
+                      </h3>
+                      <p className="text-gray-700 leading-relaxed text-xl">{step}</p>
                     </div>
                   </div>
                 ))}
@@ -516,87 +526,97 @@ export default function CardDetailPage() {
       )}
 
       {/* Zone de détails du module - Pleine largeur */}
-      <div className="bg-gray-50 border-t border-gray-100 py-16">
+      <div className="bg-gradient-to-br from-gray-50 to-indigo-50/30 border-t border-gray-200/50 py-20">
         <div className="max-w-7xl mx-auto px-6">
-          <h2 className="text-3xl font-bold text-blue-900 mb-8 text-center">Détails du module</h2>
-          <div className="prose prose-lg max-w-none text-gray-700 leading-relaxed">
-            <div className="text-center mb-8">
-              <p className="text-xl text-gray-600 max-w-4xl mx-auto">
-                {card.description}
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-4">
+              Détails du module
+            </h2>
+            <p className="text-xl text-gray-600 max-w-4xl mx-auto">
+              {card.description}
+            </p>
+          </div>
+          
+          {/* Description détaillée du module */}
+          <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 p-12 max-w-5xl mx-auto mb-12">
+            <h3 className="text-3xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-8 text-center">
+              À propos de {card.title}
+            </h3>
+            <div className="max-w-4xl mx-auto space-y-6">
+              <p className="text-gray-700 text-xl leading-relaxed">
+                {card.title} est une solution avancée qui révolutionne la façon dont vous travaillez avec l'intelligence artificielle. 
+                Cette plateforme offre des fonctionnalités de pointe pour optimiser vos workflows et améliorer votre productivité.
+              </p>
+              <p className="text-gray-700 text-xl leading-relaxed">
+                Que vous soyez un développeur expérimenté ou un débutant, {card.title} s'adapte à vos besoins 
+                et vous accompagne dans tous vos projets d'IA.
               </p>
             </div>
-            
-            {/* Description détaillée du module */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 mb-8">
-              <h3 className="text-2xl font-semibold text-blue-800 mb-6 text-center">À propos de {card.title}</h3>
-              <div className="max-w-4xl mx-auto">
-                <p className="text-gray-700 mb-6 text-lg leading-relaxed">
-                  {card.title} est une solution avancée qui révolutionne la façon dont vous travaillez avec l'intelligence artificielle. 
-                  Cette plateforme offre des fonctionnalités de pointe pour optimiser vos workflows et améliorer votre productivité.
-                </p>
-                <p className="text-gray-700 text-lg leading-relaxed">
-                  Que vous soyez un développeur expérimenté ou un débutant, {card.title} s'adapte à vos besoins 
-                  et vous accompagne dans tous vos projets d'IA.
-                </p>
-              </div>
-            </div>
+          </div>
 
-            {/* Avantages clés */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 text-center">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">🚀</span>
-                </div>
-                <h4 className="font-semibold text-blue-800 mb-2">Performance</h4>
-                <p className="text-gray-700 text-sm">
-                  Optimisé pour des performances maximales avec une interface utilisateur intuitive et réactive.
-                </p>
+          {/* Avantages clés */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+            <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 p-8 text-center hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+              <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <span className="text-3xl">🚀</span>
               </div>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 text-center">
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">🔒</span>
-                </div>
-                <h4 className="font-semibold text-green-800 mb-2">Sécurité</h4>
-                <p className="text-gray-700 text-sm">
-                  Sécurité de niveau entreprise avec authentification robuste et protection des données.
-                </p>
-              </div>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 text-center">
-                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">🛠️</span>
-                </div>
-                <h4 className="font-semibold text-purple-800 mb-2">Flexibilité</h4>
-                <p className="text-gray-700 text-sm">
-                  Architecture modulaire permettant une personnalisation complète selon vos besoins.
-                </p>
-              </div>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 text-center">
-                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">📈</span>
-                </div>
-                <h4 className="font-semibold text-orange-800 mb-2">Évolutivité</h4>
-                <p className="text-gray-700 text-sm">
-                  Évolue avec votre entreprise, de la startup à l'entreprise multinationale.
-                </p>
-              </div>
+              <h4 className="text-xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-4">Performance</h4>
+              <p className="text-gray-700 leading-relaxed">
+                Optimisé pour des performances maximales avec une interface utilisateur intuitive et réactive.
+              </p>
             </div>
+            <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 p-8 text-center hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+              <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <span className="text-3xl">🔒</span>
+              </div>
+              <h4 className="text-xl font-bold bg-gradient-to-r from-green-700 to-emerald-700 bg-clip-text text-transparent mb-4">Sécurité</h4>
+              <p className="text-gray-700 leading-relaxed">
+                Sécurité de niveau entreprise avec authentification robuste et protection des données.
+              </p>
+            </div>
+            <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 p-8 text-center hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+              <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <span className="text-3xl">🛠️</span>
+              </div>
+              <h4 className="text-xl font-bold bg-gradient-to-r from-purple-700 to-pink-700 bg-clip-text text-transparent mb-4">Flexibilité</h4>
+              <p className="text-gray-700 leading-relaxed">
+                Architecture modulaire permettant une personnalisation complète selon vos besoins.
+              </p>
+            </div>
+            <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 p-8 text-center hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+              <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-red-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <span className="text-3xl">📈</span>
+              </div>
+              <h4 className="text-xl font-bold bg-gradient-to-r from-orange-700 to-red-700 bg-clip-text text-transparent mb-4">Évolutivité</h4>
+              <p className="text-gray-700 leading-relaxed">
+                Évolue avec votre entreprise, de la startup à l'entreprise multinationale.
+              </p>
+            </div>
+          </div>
 
-            {/* Informations techniques */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-              <h3 className="text-2xl font-semibold text-blue-800 mb-6 text-center">Informations techniques</h3>
-              <div className="max-w-2xl mx-auto">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="text-sm text-gray-500 mb-1">Catégorie</div>
-                    <div className="font-semibold text-gray-700">{card.category || 'BUILDING BLOCKS'}</div>
+          {/* Informations techniques */}
+          <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 p-12">
+            <h3 className="text-3xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-8 text-center">
+              Informations techniques
+            </h3>
+            <div className="max-w-4xl mx-auto">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-8 border border-blue-100">
+                  <div className="text-sm text-gray-600 mb-2 font-medium">Catégorie</div>
+                  <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                    {card.category || 'BUILDING BLOCKS'}
                   </div>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="text-sm text-gray-500 mb-1">Prix</div>
-                    <div className="font-semibold text-gray-700">€{card.price}/mois</div>
+                </div>
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-8 border border-green-100">
+                  <div className="text-sm text-gray-600 mb-2 font-medium">Prix</div>
+                  <div className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                    €{card.price}/mois
                   </div>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="text-sm text-gray-500 mb-1">Type</div>
-                    <div className="font-semibold text-gray-700">SaaS</div>
+                </div>
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-8 border border-purple-100">
+                  <div className="text-sm text-gray-600 mb-2 font-medium">Type</div>
+                  <div className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                    SaaS
                   </div>
                 </div>
               </div>
@@ -604,63 +624,6 @@ export default function CardDetailPage() {
           </div>
         </div>
       </div>
-
-      {/* Section pour les modules gratuits */}
-      {card.price === 0 && (
-        <section className="bg-green-600 py-16">
-          <div className="max-w-7xl mx-auto px-6 text-center">
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Module gratuit - Accès immédiat !
-            </h2>
-            <p className="text-green-100 mb-8 text-lg">
-              Ce module est entièrement gratuit et accessible directement
-            </p>
-            <button
-              onClick={async () => {
-                const moduleUrls: { [key: string]: string } = {
-                  'Librespeed': 'https://librespeed.regispailler.fr',
-                  'PSitransfer': 'https://psitransfer.regispailler.fr',
-                  'PDF+': 'https://pdfplus.regispailler.fr',
-                };
-                
-                const directUrl = moduleUrls[card.title];
-                if (directUrl) {
-                  setIframeModal({
-                    isOpen: true,
-                    url: directUrl,
-                    title: card.title
-                  });
-                } else {
-                  alert(`Module gratuit "${card.title}" - Accès disponible pour les utilisateurs connectés`);
-                }
-              }}
-              className="bg-white text-green-600 font-semibold px-8 py-4 rounded-lg hover:bg-green-50 transition-colors text-lg shadow-lg"
-            >
-              🆓 Accéder maintenant
-            </button>
-          </div>
-        </section>
-      )}
-
-      {/* Section Confirmer la(es) sélection(s) - Bannière bleue - seulement pour les modules payants */}
-      {card.price > 0 && (
-        <section className="bg-blue-600 py-16">
-          <div className="max-w-7xl mx-auto px-6 text-center">
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Prêt à activer vos sélections ?
-            </h2>
-            <p className="text-blue-100 mb-8 text-lg">
-              Confirmez vos sélections et accédez à tous les outils IA
-            </p>
-            <button
-              onClick={() => router.push('/selections')}
-              className="bg-white text-blue-600 font-semibold px-8 py-4 rounded-lg hover:bg-blue-50 transition-colors text-lg shadow-lg"
-            >
-              Confirmer la(es) sélection(s)
-            </button>
-          </div>
-        </section>
-      )}
 
       {/* Modal pour l'iframe */}
       {iframeModal.isOpen && (
@@ -694,14 +657,6 @@ export default function CardDetailPage() {
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-100 py-6">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center text-gray-500 text-sm">
-            © 2025 iIAhome - Tous droits réservés
-          </div>
-        </div>
-      </footer>
     </div>
   );
 } 

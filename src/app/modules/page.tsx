@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../utils/supabaseClient";
 import { useRouter } from 'next/navigation';
 import Link from "next/link";
-import Header from '../../components/Header';
 
 export default function ModulesPage() {
   const router = useRouter();
@@ -97,7 +96,8 @@ export default function ModulesPage() {
 
   return (
     <div className="min-h-screen bg-blue-50">
-      <Header />
+      {/* En-tête */}
+      <header className="w-full bg-white shadow-sm border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">

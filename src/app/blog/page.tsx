@@ -4,7 +4,7 @@ import { supabase } from "../../utils/supabaseClient";
 import { useSession, useUser } from "@supabase/auth-helpers-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Header from '../../components/Header';
+import Breadcrumb from '../../components/Breadcrumb';
 
 interface BlogArticle {
   id: string;
@@ -187,8 +187,9 @@ export default function BlogPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+      <div className="pt-20">
+        <Breadcrumb />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
 
 
         {/* Header */}
@@ -349,6 +350,7 @@ export default function BlogPage() {
             </button>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

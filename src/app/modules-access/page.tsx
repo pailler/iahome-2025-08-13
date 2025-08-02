@@ -88,12 +88,7 @@ export default function ModulesAccess() {
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <button
-                onClick={() => window.history.back()}
-                className="text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                ← Retour
-              </button>
+
               <div className="h-6 w-px bg-gray-300"></div>
               <h1 className="text-xl font-semibold text-gray-900">Accès aux Modules IA</h1>
             </div>

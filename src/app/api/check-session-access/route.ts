@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Vérifier si c'est un module avec limitation de temps
-    const isTimeLimitedModule = false; // Aucun module avec limitation de temps
+    const isTimeLimitedModule = moduleName === 'IAmetube' || moduleName === 'IA metube';
     
     if (!isTimeLimitedModule) {
       // Pour les modules sans limitation, vérifier seulement l'abonnement
@@ -42,6 +42,13 @@ export async function POST(request: NextRequest) {
         canAccess: true,
         reason: 'Accès illimité',
         timeRemaining: null
+      });
+    } else {
+      // Pour les modules avec limitation de temps (comme IA metube), permettre l'accès temporaire
+      return NextResponse.json({
+        canAccess: true,
+        reason: 'Session à créer',
+        timeRemaining: 720 // 12 heures en minutes
       });
     }
 

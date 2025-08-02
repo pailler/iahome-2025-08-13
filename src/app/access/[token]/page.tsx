@@ -90,12 +90,7 @@ export default function SecureAccess() {
       <div className="bg-black bg-opacity-50 backdrop-blur-sm border-b border-gray-700 p-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <button
-              onClick={() => window.history.back()}
-              className="text-gray-400 hover:text-white transition-colors"
-            >
-              ← Retour
-            </button>
+
             <div className="h-6 w-px bg-gray-600"></div>
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-400">Accès sécurisé</span>
