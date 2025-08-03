@@ -331,17 +331,115 @@ export default function CardDetailPage() {
                     </button>
                   ) : (
                     // Bouton de sélection pour les modules payants
-                    <button 
-                      className={`w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 ${
-                        isCardSelected(card.id)
-                          ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white'
-                          : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white'
-                      }`}
-                      onClick={() => handleSubscribe(card)}
-                    >
-                      <span className="text-xl">🔐</span>
-                      <span>{isCardSelected(card.id) ? 'Sélectionné' : 'Choisir'}</span>
-                    </button>
+                    <div className="space-y-4">
+                      <button 
+                        className={`w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 ${
+                          isCardSelected(card.id)
+                            ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white'
+                            : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white'
+                        }`}
+                        onClick={() => handleSubscribe(card)}
+                      >
+                        <span className="text-xl">🔐</span>
+                        <span>{isCardSelected(card.id) ? 'Sélectionné' : 'Choisir'}</span>
+                      </button>
+                      
+                      {/* Bouton "Activer la sélection" qui apparaît après avoir cliqué sur "Choisir" */}
+                      {isCardSelected(card.id) && (
+                        <button 
+                          className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                          onClick={async () => {
+                            // Créer une session de paiement pour ce module spécifique
+                            try {
+                              const response = await fetch('/api/create-payment-intent', {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                  items: [card], // Seulement ce module
+                                  customerEmail: user?.email,
+                                  type: 'payment',
+                                }),
+                              });
+
+                              if (!response.ok) {
+                                throw new Error(`Erreur HTTP ${response.status}`);
+                              }
+
+                              const { url, error } = await response.json();
+
+                              if (error) {
+                                throw new Error(`Erreur API: ${error}`);
+                              }
+
+                              // Rediriger vers Stripe Checkout
+                              if (url) {
+                                window.location.href = url;
+                              } else {
+                                throw new Error('URL de session Stripe manquante.');
+                              }
+                            } catch (error) {
+                              console.error('Erreur lors de l\'activation:', error);
+                              alert(`Erreur lors de l'activation: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+                            }
+                          }}
+                        >
+                          <span className="text-xl">⚡</span>
+                          <span>Activer {card.title}</span>
+                        </button>
+                      )}
+
+                      {/* Bouton Test JWT - toujours visible si session existe */}
+                      {session && (
+                        <button 
+                          className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                          onClick={async () => {
+                            try {
+                              console.log('🔍 Test JWT - Génération du token pour:', card.title);
+                              const response = await fetch('/api/generate-access-token', {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                  'Authorization': `Bearer ${session?.access_token}`
+                                },
+                                body: JSON.stringify({
+                                  moduleId: card.id,
+                                  moduleName: card.title.toLowerCase().replace(/\s+/g, '')
+                                }),
+                              });
+                              if (!response.ok) {
+                                const errorData = await response.json();
+                                throw new Error(errorData.error || `Erreur HTTP ${response.status}`);
+                              }
+                              const { accessToken, moduleName } = await response.json();
+                              console.log('✅ Token JWT généré avec succès');
+                              console.log('🔍 Token (premiers caractères):', accessToken.substring(0, 50) + '...');
+                              const moduleUrls: { [key: string]: string } = {
+                                'stablediffusion': 'http://localhost:7860',
+                                'iaphoto': 'http://localhost:7861', 
+                                'iametube': 'http://localhost:7862',
+                                'chatgpt': 'http://localhost:7863',
+                                'librespeed': 'https://librespeed.regispailler.fr',
+                                'psitransfer': 'https://psitransfer.regispailler.fr',
+                                'pdf+': 'https://pdfplus.regispailler.fr',
+                                'aiassistant': 'http://localhost:7864'
+                              };
+                              const baseUrl = moduleUrls[moduleName] || 'http://localhost:7862';
+                              const accessUrl = `${baseUrl}?token=${accessToken}`;
+                              console.log('🔗 URL d\'accès:', accessUrl);
+                              window.open(accessUrl, '_blank');
+                            } catch (error) {
+                              console.error('❌ Erreur lors de l\'accès:', error);
+                              alert(`Erreur lors de l'accès: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+                            }
+                          }}
+                        >
+                          <span className="text-xl">🔑</span>
+                          <span>Test JWT - Accéder à {card.title}</span>
+                        </button>
+                      )}
+                    </div>
                   )}
 
                   {!session && (

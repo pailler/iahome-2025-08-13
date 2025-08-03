@@ -22,13 +22,18 @@ export default function CancelPage() {
           </div>
 
           <div className="space-y-4">
-
+            <Link 
+              href="/selections"
+              className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+            >
+              🛒 Retour aux sélections
+            </Link>
             
             <Link 
-              href="/test-real-payment"
-              className="inline-block bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-6 rounded-lg transition-colors ml-4"
+              href="/"
+              className="inline-block bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-6 rounded-lg transition-colors ml-4"
             >
-              Réessayer le Paiement
+              🏠 Retour à l'accueil
             </Link>
           </div>
 

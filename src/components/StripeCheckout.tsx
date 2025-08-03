@@ -76,7 +76,7 @@ export default function StripeCheckout({ items, customerEmail, onSuccess, onErro
       onClick={handleCheckout}
       className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
     >
-      Activer les sélections
+      Valider
     </button>
   );
 } 

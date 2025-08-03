@@ -4,7 +4,6 @@ import { supabase } from "../../../utils/supabaseClient";
 import Link from "next/link";
 import Breadcrumb from "../../../components/Breadcrumb";
 import { useParams } from "next/navigation";
-import Footer from "../../../components/Footer";
 
 interface BlogArticle {
   id: string;
@@ -176,7 +175,6 @@ export default function BlogArticlePage() {
           </Link>
         </div>
       </div>
-      <Footer />
     </div>
   );
 }

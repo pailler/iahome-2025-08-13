@@ -263,7 +263,7 @@ export default function SelectionsPage() {
               href="/encours" 
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
             >
-              📦 Voir mes sélections actives
+              📦 Voir mes applis actives
             </Link>
           </div>
         </div>

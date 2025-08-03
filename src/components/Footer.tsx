@@ -13,7 +13,7 @@ export default function Footer() {
               <span className="text-2xl font-bold text-blue-400">IAhome</span>
             </div>
             <p className="text-gray-300 mb-4">
-              Accès direct à la puissance et aux outils IA. Build with ready-made apps and templates created by the Bubble community.
+              Accès direct à la puissance et aux outils IA.
             </p>
             <div className="flex space-x-4">
               <a href="#" className="text-gray-400 hover:text-white transition-colors">
@@ -93,7 +93,7 @@ export default function Footer() {
         <div className="border-t border-gray-800 mt-8 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="text-gray-400 text-sm">
-              © 2024 IAHome. Tous droits réservés.
+              © 2025 IAHome. Tous droits réservés.
             </div>
             <div className="flex space-x-6 mt-4 md:mt-0">
               <Link href="/privacy" className="text-gray-400 hover:text-white text-sm transition-colors">

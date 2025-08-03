@@ -4,7 +4,7 @@ import { supabase } from "../../../utils/supabaseClient";
 import { useSession, useUser } from "@supabase/auth-helpers-react";
 import Link from "next/link";
 import Header from '../../../components/Header';
-import Footer from '../../../components/Footer';
+import Breadcrumb from '../../../components/Breadcrumb';
 
 interface BlogArticle {
   id: string;
@@ -662,7 +662,6 @@ export default function AdminBlogPage() {
           </div>
         </div>
       </div>
-      <Footer />
     </div>
   );
 } 

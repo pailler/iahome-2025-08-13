@@ -36,7 +36,7 @@ export default function AdminPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [session, setSession] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'blog' | 'modules' | 'users'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'blog' | 'modules' | 'users' | 'linkedin'>('overview');
   const [loading, setLoading] = useState(true);
   
   // États pour les données
@@ -49,7 +49,9 @@ export default function AdminPage() {
     totalModules: 0,
     modulesWithDetails: 0,
     totalUsers: 0,
-    adminUsers: 0
+    adminUsers: 0,
+    totalLinkedInPosts: 0,
+    publishedLinkedInPosts: 0
   });
 
   useEffect(() => {
@@ -118,7 +120,7 @@ export default function AdminPage() {
 
       // Charger les modules (cartes) - sans les pages détaillées pour l'instant
       const { data: modulesData, error: modulesError } = await supabase
-        .from('cartes')
+        .from('modules')
         .select('*')
         .order('title', { ascending: true });
 
@@ -134,6 +136,16 @@ export default function AdminPage() {
 
       if (usersError) {
         console.error('Erreur lors du chargement des utilisateurs:', usersError);
+      }
+
+      // Charger les posts LinkedIn
+      const { data: linkedinPostsData, error: linkedinError } = await supabase
+        .from('linkedin_posts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (linkedinError) {
+        console.error('Erreur lors du chargement des posts LinkedIn:', linkedinError);
       }
 
       // Transformer les données des modules
@@ -160,7 +172,9 @@ export default function AdminPage() {
         totalModules: transformedModules.length,
         modulesWithDetails: 0, // Pas de pages détaillées pour l'instant
         totalUsers: usersData?.length || 0,
-        adminUsers: usersData?.filter(u => u.role === 'admin').length || 0
+        adminUsers: usersData?.filter(u => u.role === 'admin').length || 0,
+        totalLinkedInPosts: linkedinPostsData?.length || 0,
+        publishedLinkedInPosts: linkedinPostsData?.filter(post => post.status === 'published').length || 0
       });
 
     } catch (error) {
@@ -195,7 +209,7 @@ export default function AdminPage() {
       try {
         // Supprimer le module directement
         const { error } = await supabase
-          .from('cartes')
+          .from('modules')
           .delete()
           .eq('id', moduleId);
         
@@ -320,6 +334,16 @@ export default function AdminPage() {
           >
             👥 Utilisateurs
           </button>
+          <button
+            onClick={() => setActiveTab('linkedin')}
+            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'linkedin'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            💼 LinkedIn
+          </button>
         </div>
 
         {/* Contenu des onglets */}
@@ -377,6 +401,21 @@ export default function AdminPage() {
                       </div>
                     </div>
                   </div>
+
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <div className="flex items-center">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                        </svg>
+                      </div>
+                      <div className="ml-4">
+                        <p className="text-sm font-medium text-gray-500">Posts LinkedIn</p>
+                        <p className="text-2xl font-bold text-gray-900">{stats.totalLinkedInPosts}</p>
+                        <p className="text-sm text-gray-500">{stats.publishedLinkedInPosts} publiés</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="bg-white rounded-lg shadow-md p-6">
@@ -409,6 +448,15 @@ export default function AdminPage() {
                       </svg>
                       <span className="font-medium">Gérer utilisateurs</span>
                     </button>
+                    <Link
+                      href="/admin/linkedin"
+                      className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <svg className="w-5 h-5 text-blue-600 mr-3" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                      </svg>
+                      <span className="font-medium">Gérer LinkedIn</span>
+                    </Link>
                   </div>
                 </div>
               </div>
@@ -624,6 +672,115 @@ export default function AdminPage() {
                       </tbody>
                     </table>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* LinkedIn */}
+            {activeTab === 'linkedin' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-gray-900">Gestion LinkedIn</h2>
+                  <Link
+                    href="/admin/linkedin"
+                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                    </svg>
+                    Accéder à l'interface LinkedIn
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Configuration LinkedIn */}
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <div className="flex items-center mb-4">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 ml-3">Configuration LinkedIn</h3>
+                    </div>
+                    <p className="text-gray-600 mb-4">
+                      Configurez vos credentials LinkedIn pour publier automatiquement du contenu depuis votre plateforme.
+                    </p>
+                    <Link
+                      href="/admin/linkedin"
+                      className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Configurer LinkedIn
+                    </Link>
+                  </div>
+
+                  {/* Statistiques LinkedIn */}
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <div className="flex items-center mb-4">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 ml-3">Statistiques</h3>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Total posts</span>
+                        <span className="font-semibold">{stats.totalLinkedInPosts}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Posts publiés</span>
+                        <span className="font-semibold text-green-600">{stats.publishedLinkedInPosts}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Posts en brouillon</span>
+                        <span className="font-semibold text-yellow-600">{stats.totalLinkedInPosts - stats.publishedLinkedInPosts}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Fonctionnalités LinkedIn */}
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Fonctionnalités disponibles</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="flex items-center p-3 border border-gray-200 rounded-lg">
+                      <svg className="w-5 h-5 text-blue-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      <span className="font-medium">Créer des posts</span>
+                    </div>
+                    <div className="flex items-center p-3 border border-gray-200 rounded-lg">
+                      <svg className="w-5 h-5 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span className="font-medium">Programmer des publications</span>
+                    </div>
+                    <div className="flex items-center p-3 border border-gray-200 rounded-lg">
+                      <svg className="w-5 h-5 text-purple-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                      <span className="font-medium">Suivre les statistiques</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Lien vers l'interface complète */}
+                <div className="bg-blue-50 rounded-lg p-6 text-center">
+                  <h3 className="text-lg font-semibold text-blue-900 mb-2">Interface LinkedIn complète</h3>
+                  <p className="text-blue-700 mb-4">
+                    Accédez à l'interface complète pour gérer tous vos posts LinkedIn, configurer les credentials et suivre les performances.
+                  </p>
+                  <Link
+                    href="/admin/linkedin"
+                    className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                    </svg>
+                    Accéder à l'interface LinkedIn
+                  </Link>
                 </div>
               </div>
             )}

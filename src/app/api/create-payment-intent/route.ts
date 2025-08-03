@@ -96,8 +96,8 @@ export async function POST(request: NextRequest) {
         quantity: 1,
       })),
       mode: type === 'subscription' ? 'subscription' : 'payment',
-      success_url: `${appUrl}/abonnements?success=true`,
-      cancel_url: `${appUrl}/abonnements?canceled=true`,
+      success_url: `${appUrl}/success?success=true`,
+      cancel_url: `${appUrl}/cancel?canceled=true`,
       customer_email: customerEmail,
       metadata: metadata,
     });

@@ -34,13 +34,18 @@ export default function SuccessPage() {
           )}
 
           <div className="space-y-4">
-
+            <Link 
+              href="/encours"
+              className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+            >
+              📱 Voir mes applis actives
+            </Link>
             
             <Link 
-              href="/test-payment"
-              className="inline-block bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-6 rounded-lg transition-colors ml-4"
+              href="/"
+              className="inline-block bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-6 rounded-lg transition-colors ml-4"
             >
-              Tester les Emails
+              🏠 Retour à l'accueil
             </Link>
           </div>
 

@@ -91,6 +91,7 @@ export default function BlogPage() {
       const { data, error } = await supabase
         .from('blog_articles')
         .select('*')
+        .eq('is_published', true)
         .order('published_at', { ascending: false });
 
       if (error) {
@@ -190,7 +191,6 @@ export default function BlogPage() {
       <div className="pt-20">
         <Breadcrumb />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-
 
         {/* Header */}
         <div className="text-center mb-12">
