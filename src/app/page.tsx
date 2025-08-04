@@ -313,8 +313,8 @@ export default function Home() {
 
       // Filtre par prix
       const matchesPrice = priceFilter === 'all' || 
-        (priceFilter === 'free' && module.price === 0) ||
-        (priceFilter === 'paid' && module.price > 0);
+                        (priceFilter === 'free' && module.price === '0') ||
+                  (priceFilter === 'paid' && module.price !== '0');
 
       // Filtre par niveau d'expérience
       const matchesExperience = experienceFilter === 'all' || 
@@ -327,6 +327,14 @@ export default function Home() {
       return matchesSearch && matchesPrice && matchesExperience && matchesCategory;
     })
     .sort((a, b) => {
+      // Tri principal : modules gratuits en premier, puis modules payants
+      const aIsFree = a.price === '0';
+      const bIsFree = b.price === '0';
+      
+      if (aIsFree && !bIsFree) return -1; // a (gratuit) avant b (payant)
+      if (!aIsFree && bIsFree) return 1;  // b (gratuit) avant a (payant)
+      
+      // Si les deux modules ont le même type (gratuit ou payant), appliquer le tri secondaire
       switch (sortBy) {
         case 'most_used':
           return (b.usage_count || 0) - (a.usage_count || 0);
@@ -998,7 +1006,9 @@ export default function Home() {
                             <p className="text-sm text-gray-500 mb-2 italic">{module.subtitle}</p>
                           )}
                         </Link>
-                        <p className="text-sm text-gray-600 mb-4">{module.description}</p>
+                        {module.title !== 'Metube' && (
+                          <p className="text-sm text-gray-600 mb-4">{module.description}</p>
+                        )}
                       </div>
 
 
@@ -1081,12 +1091,14 @@ export default function Home() {
 
                                                  {/* Prix et bouton */}
                          <div className="flex items-center justify-between">
-                           <div className="text-2xl font-bold text-blue-900">
-                             €{module.price}
+                           <div className="flex items-center gap-3">
+                                                         <div className="text-2xl font-bold text-blue-900">
+                              {module.price === '0' ? 'Accès gratuit' : `€${module.price}`}
+                            </div>
                            </div>
                            <div className="flex gap-2">
-                             {/* Bouton d'accès direct pour les modules avec abonnement actif ou modules gratuits (sauf Metube) */}
-{session && (userSubscriptions[module.title] || module.price === 0) && module.title !== 'Metube' && (
+                             {/* Bouton d'accès direct pour les modules avec abonnement actif uniquement (pas pour les modules gratuits) */}
+{session && userSubscriptions[module.title] && module.price !== '0' && (
                                <button 
                                  className="px-4 py-2 rounded-lg font-semibold text-sm bg-green-600 hover:bg-green-700 text-white transition-colors"
                                  onClick={async () => {
@@ -1124,6 +1136,7 @@ export default function Home() {
                                        'Librespeed': 'https://librespeed.regispailler.fr',
                                        'PSitransfer': 'https://psitransfer.regispailler.fr',
                                        'PDF+': 'https://pdfplus.regispailler.fr',
+                                       'Stable diffusion': 'https://stablediffusion.regispailler.fr',
                                      };
                                      
                                      const directUrl = moduleUrls[module.title];
@@ -1136,7 +1149,7 @@ export default function Home() {
                                        });
                                      } else {
                                        // Pour les modules gratuits sans URL spécifique, afficher un message
-                                       if (module.price === 0) {
+                                       if (module.price === '0') {
                                          alert(`Module gratuit "${module.title}" - Accès disponible pour les utilisateurs connectés`);
                                        }
                                      }
@@ -1144,7 +1157,7 @@ export default function Home() {
                                  }}
                                  title={`Accéder à ${module.title}`}
                                >
-                                 {module.price === 0 ? '🆓 Accéder gratuitement' : '📺 Accéder'}
+                                 📺 Accéder
                                </button>
                              )}
                           </div>

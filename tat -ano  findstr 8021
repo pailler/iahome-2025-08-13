@@ -1,0 +1,5 @@
+[33m3d3c0be[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m feat: Amélioration complète du système de gestion des modules
+[33m28d9f77[m feat: Intégration complète LinkedIn avec interface admin et API
+[33maaecadc[m[33m ([m[1;33mtag: [m[1;33m2-aout-2025[m[33m)[m 2 aout 2025
+[33mbc72d6e[m Fix: Correction de l'erreur de syntaxe JSX dans encours/page.tsx - Suppression de l'accolade fermante en trop
+[33md3cd692[m Debug: Ajout d'informations de debug et boutons toujours visibles

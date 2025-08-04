@@ -474,7 +474,7 @@ export default function EncoursPage() {
                         }}
                         title={`Accéder à ${module.title}`}
                       >
-                                                                        {module.price === 0 ? '🆓 Accéder gratuitement' : '🔗 Accéder à ' + module.title}
+                                                                        {module.price === '0' ? '🆓 Accéder gratuitement' : '🔗 Accéder à ' + module.title}
                       </button>
                     </div>
                   </div>

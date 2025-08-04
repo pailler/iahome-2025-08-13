@@ -308,8 +308,8 @@ export default function CardDetailPage() {
 
                 <div className="space-y-6">
                   {/* Bouton d'abonnement ou d'accès gratuit */}
-                  {card.price === 0 ? (
-                    // Bouton d'accès gratuit pour les modules gratuits
+                  {card.price === 0 && session ? (
+                    // Bouton d'accès gratuit pour les modules gratuits (uniquement si connecté)
                     <button 
                       className={`w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 ${
                         card.title === 'Metube' && session 
@@ -376,66 +376,81 @@ export default function CardDetailPage() {
                       <span className="text-xl">{card.title === 'Metube' && session ? '🔑' : '🆓'}</span>
                       <span>{card.title === 'Metube' && session ? 'Accès gratuit' : 'Accéder gratuitement'}</span>
                     </button>
+                  ) : card.price === 0 && !session ? (
+                    // Message pour les modules gratuits quand l'utilisateur n'est pas connecté
+                    <div className="text-center p-4 bg-gray-100 rounded-lg">
+                      <p className="text-gray-600 mb-2">Module gratuit</p>
+                      <p className="text-sm text-gray-500">Connectez-vous pour accéder à ce module</p>
+                    </div>
                   ) : (
-                    // Bouton de sélection pour les modules payants
+                    // Bouton de sélection pour les modules payants (sauf les modules gratuits spécifiques)
                     <div className="space-y-4">
-                      <button 
-                        className={`w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 ${
-                          isCardSelected(card.id)
-                            ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white'
-                            : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white'
-                        }`}
-                        onClick={() => handleSubscribe(card)}
-                      >
-                        <span className="text-xl">🔐</span>
-                        <span>{isCardSelected(card.id) ? 'Sélectionné' : 'Choisir'}</span>
-                      </button>
-                      
-                      {/* Bouton "Activer la sélection" qui apparaît après avoir cliqué sur "Choisir" */}
-                      {isCardSelected(card.id) && (
+                      {!['PSitransfer', 'PDF+', 'Metube', 'Librespeed'].includes(card.title) && (
                         <button 
-                          className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-                          onClick={async () => {
-                            // Créer une session de paiement pour ce module spécifique
-                            try {
-                              const response = await fetch('/api/create-payment-intent', {
-                                method: 'POST',
-                                headers: {
-                                  'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({
-                                  items: [card], // Seulement ce module
-                                  customerEmail: user?.email,
-                                  type: 'payment',
-                                }),
-                              });
-
-                              if (!response.ok) {
-                                throw new Error(`Erreur HTTP ${response.status}`);
-                              }
-
-                              const { url, error } = await response.json();
-
-                              if (error) {
-                                throw new Error(`Erreur API: ${error}`);
-                              }
-
-                              // Rediriger vers Stripe Checkout
-                              if (url) {
-                                window.location.href = url;
-                              } else {
-                                throw new Error('URL de session Stripe manquante.');
-                              }
-                            } catch (error) {
-                              console.error('Erreur lors de l\'activation:', error);
-                              alert(`Erreur lors de l'activation: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
-                            }
-                          }}
+                          className={`w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 ${
+                            isCardSelected(card.id)
+                              ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white'
+                              : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white'
+                          }`}
+                          onClick={() => handleSubscribe(card)}
                         >
-                          <span className="text-xl">⚡</span>
-                          <span>Activer {card.title}</span>
+                          <span className="text-xl">🔐</span>
+                          <span>{isCardSelected(card.id) ? 'Sélectionné' : 'Choisir'}</span>
                         </button>
                       )}
+                      
+                                             {/* Bouton "Activer la sélection" qui apparaît après avoir cliqué sur "Choisir" (uniquement pour les modules payants) */}
+                       {isCardSelected(card.id) && card.price !== 0 && (
+                         <button 
+                           className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                                                       onClick={async () => {
+                              // Vérifier si l'utilisateur est connecté
+                              if (!session) {
+                                // Rediriger vers la page de création de compte
+                                window.location.href = '/register';
+                                return;
+                              }
+
+                             // Créer une session de paiement pour ce module spécifique
+                             try {
+                               const response = await fetch('/api/create-payment-intent', {
+                                 method: 'POST',
+                                 headers: {
+                                   'Content-Type': 'application/json',
+                                 },
+                                 body: JSON.stringify({
+                                   items: [card], // Seulement ce module
+                                   customerEmail: user?.email,
+                                   type: 'payment',
+                                 }),
+                               });
+
+                               if (!response.ok) {
+                                 throw new Error(`Erreur HTTP ${response.status}`);
+                               }
+
+                               const { url, error } = await response.json();
+
+                               if (error) {
+                                 throw new Error(`Erreur API: ${error}`);
+                               }
+
+                               // Rediriger vers Stripe Checkout
+                               if (url) {
+                                 window.location.href = url;
+                               } else {
+                                 throw new Error('URL de session Stripe manquante.');
+                               }
+                             } catch (error) {
+                               console.error('Erreur lors de l\'activation:', error);
+                               alert(`Erreur lors de l'activation: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+                             }
+                           }}
+                         >
+                           <span className="text-xl">⚡</span>
+                           <span>Activer {card.title}</span>
+                         </button>
+                       )}
 
                       {/* Bouton Test JWT - toujours visible si session existe */}
                       {session && (
@@ -489,15 +504,15 @@ export default function CardDetailPage() {
                     </div>
                   )}
 
-                  {!session && (
-                    <div className="bg-gray-50 rounded-xl p-4 text-center">
-                      <p className="text-sm text-gray-600">
-                        <Link href="/login" className="text-blue-600 hover:text-blue-800 font-medium">
-                          Connectez-vous
-                        </Link> {card.price === 0 ? 'pour accéder' : 'pour vous abonner'}
-                      </p>
-                    </div>
-                  )}
+                                     {!session && (
+                     <div className="bg-gray-50 rounded-xl p-4 text-center">
+                       <p className="text-sm text-gray-600">
+                         <Link href="/register" className="text-blue-600 hover:text-blue-800 font-medium">
+                           Connectez-vous
+                         </Link> {card.price === 0 ? 'pour accéder' : 'pour utiliser le module'}
+                       </p>
+                     </div>
+                   )}
                 </div>
               </div>
 
