@@ -202,6 +202,57 @@ export default function EncoursPage() {
     }
   };
 
+  // Fonction pour accéder aux modules avec JWT (comme dans la page du module)
+  const accessModuleWithJWT = async (moduleTitle: string, moduleId: string) => {
+    if (!session) {
+      alert('Vous devez être connecté pour accéder à ce module');
+      return;
+    }
+
+    try {
+      console.log('🔍 Génération du token JWT pour:', moduleTitle);
+      const response = await fetch('/api/generate-access-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({
+          moduleId: moduleId,
+          moduleName: moduleTitle.toLowerCase().replace(/\s+/g, '')
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Erreur HTTP ${response.status}`);
+      }
+      
+      const { accessToken, moduleName } = await response.json();
+      console.log('✅ Token JWT généré avec succès');
+      console.log('🔍 Token (premiers caractères):', accessToken.substring(0, 50) + '...');
+      
+      const moduleUrls: { [key: string]: string } = {
+        'stablediffusion': 'https://stablediffusion.regispailler.fr',
+        'iaphoto': 'https://iaphoto.regispailler.fr', 
+        'iametube': 'https://metube.regispailler.fr',
+        'chatgpt': 'https://chatgpt.regispailler.fr',
+        'librespeed': 'https://librespeed.regispailler.fr',
+        'psitransfer': 'https://psitransfer.regispailler.fr',
+        'pdf+': 'https://pdfplus.regispailler.fr',
+        'aiassistant': 'https://aiassistant.regispailler.fr'
+      };
+      
+      const baseUrl = moduleUrls[moduleName] || 'https://stablediffusion.regispailler.fr';
+      const accessUrl = `${baseUrl}?token=${accessToken}`;
+      console.log('🔗 URL d\'accès:', accessUrl);
+      window.open(accessUrl, '_blank');
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'accès:', error);
+      alert(`Erreur lors de l'accès: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+    }
+  };
+
   // Fonction pour formater la date
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('fr-FR', {
@@ -447,71 +498,15 @@ export default function EncoursPage() {
                       </div>
 
                       <button 
-                        className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
+                        className="w-full px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-1"
                         onClick={async () => {
-                          // Vérifier l'accès au module avant d'ouvrir
-                          const accessCheck = await checkModuleAccess(module.title);
-                          
-                          if (!accessCheck.canAccess) {
-                            if (accessCheck.reason === 'Session expirée') {
-                              alert(`Session expirée pour ${module.title}. Veuillez générer un nouveau lien d'accès.`);
-                            } else {
-                              alert(`Accès refusé pour ${module.title}: ${accessCheck.reason}`);
-                            }
-                            return;
-                          }
-
-                            // Accès direct pour tous les modules dans une iframe
-                            if (module.title === 'IA metube' || module.title === 'IAmetube') {
-                              // Générer un magic link de 12 heures pour IA metube
-                              console.log('🔍 Génération d\'un magic link de 12 heures pour IA metube');
-                              const magicLink = await generateModuleMagicLink(module.title);
-                              if (magicLink) {
-                                setIframeModal({
-                                  isOpen: true,
-                                  url: magicLink,
-                                  title: module.title
-                                });
-                              } else {
-                                alert('Erreur lors de la génération du lien d\'accès');
-                              }
-                            } else {
-                              // Accès direct pour tous les autres modules dans une iframe
-                              const moduleUrls: { [key: string]: string } = {
-                                'IAphoto': 'https://iaphoto.regispailler.fr',
-                                'IAvideo': 'https://iavideo.regispailler.fr',
-                                'Librespeed': 'https://librespeed.regispailler.fr',
-                                'PSitransfer': 'https://psitransfer.regispailler.fr',
-                                'PDF+': 'https://pdfplus.regispailler.fr',
-                                'Stable diffusion': 'https://stablediffusion.regispailler.fr',
-                              };
-                              
-                              const directUrl = moduleUrls[module.title];
-                              if (directUrl) {
-                                console.log('🔍 Ouverture de', module.title, 'dans une iframe:', directUrl);
-                                setIframeModal({
-                                  isOpen: true,
-                                  url: directUrl,
-                                  title: module.title
-                                });
-                              } else {
-                                // Fallback : essayer un magic link
-                                const magicLink = await generateModuleMagicLink(module.title);
-                                if (magicLink) {
-                                  setIframeModal({
-                                    isOpen: true,
-                                    url: magicLink,
-                                    title: module.title
-                                  });
-                                } else {
-                                  alert('Erreur lors de la génération du lien d\'accès');
-                                }
-                              }
-                            }
+                          // Utiliser la fonction JWT qui fonctionne
+                          await accessModuleWithJWT(module.title, module.id);
                         }}
-                        title={`Accéder à ${module.title}`}
+                        title={`Accéder à ${module.title} avec JWT`}
                       >
-                                                                        {module.price === '0' ? '🆓 Accéder gratuitement' : '🔗 Accéder à ' + module.title}
+                        <span className="text-xl mr-2">🔑</span>
+                        {module.price === '0' ? 'Accéder gratuitement' : 'Accéder à ' + module.title}
                       </button>
                     </div>
                   </div>
