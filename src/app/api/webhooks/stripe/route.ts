@@ -342,7 +342,7 @@ async function addModuleAccess(userEmail: string, moduleId: string, sessionId: s
       .from('module_access')
       .insert({
         user_id: userData.user.id,
-        module_id: moduleId, // Utiliser l'ID numérique du module
+        module_id: parseInt(moduleId), // Utiliser l'ID numérique du module
         access_type: 'purchase',
         metadata: {
           session_id: sessionId,
