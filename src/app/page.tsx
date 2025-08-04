@@ -842,7 +842,7 @@ export default function Home() {
                 Accès direct à la puissance et aux outils IA
               </h1>
               <p className="text-xl text-blue-100 mb-6">
-                Build with ready-made apps and templates created by the Bubble community.
+                L'essentiel des outils IA réunis pour une utilisation simple et directe.
               </p>
               
               {/* Barre de recherche */}
