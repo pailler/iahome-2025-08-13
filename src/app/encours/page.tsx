@@ -102,21 +102,49 @@ export default function EncoursPage() {
         // Ensuite, récupérer les détails des modules pour chaque accès
         const modulesWithDetails = [];
         for (const access of accessData || []) {
-          const { data: moduleData, error: moduleError } = await supabase
-            .from('modules')
-            .select('id, title, description, category, price')
-            .eq('id', access.module_id)
-            .single();
+          try {
+            const { data: moduleData, error: moduleError } = await supabase
+              .from('modules')
+              .select('id, title, description, category, price')
+              .eq('id', access.module_id)
+              .single();
 
-          if (moduleError) {
-            console.error(`❌ Erreur chargement module ${access.module_id}:`, moduleError);
-            continue;
+            if (moduleError) {
+              console.error(`❌ Erreur chargement module ${access.module_id}:`, moduleError);
+              // Ajouter un module par défaut pour éviter les erreurs d'affichage
+              modulesWithDetails.push({
+                ...access,
+                modules: {
+                  id: access.module_id,
+                  title: 'Module supprimé',
+                  description: 'Ce module n\'existe plus dans la base de données',
+                  category: 'INCONNU',
+                  price: '0'
+                }
+              });
+              continue;
+            }
+
+            if (moduleData) {
+              modulesWithDetails.push({
+                ...access,
+                modules: moduleData
+              });
+            }
+          } catch (error) {
+            console.error(`❌ Exception lors du chargement du module ${access.module_id}:`, error);
+            // Ajouter un module par défaut en cas d'exception
+            modulesWithDetails.push({
+              ...access,
+              modules: {
+                id: access.module_id,
+                title: 'Module supprimé',
+                description: 'Ce module n\'existe plus dans la base de données',
+                category: 'INCONNU',
+                price: '0'
+              }
+            });
           }
-
-          modulesWithDetails.push({
-            ...access,
-            modules: moduleData
-          });
         }
 
         setActiveSubscriptions(modulesWithDetails);
