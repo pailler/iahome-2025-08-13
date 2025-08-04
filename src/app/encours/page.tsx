@@ -78,7 +78,8 @@ export default function EncoursPage() {
         setLoading(true);
         console.log('🔍 Chargement des sélections pour utilisateur:', user.id);
         
-        const { data, error } = await supabase
+        // D'abord, récupérer les accès modules
+        const { data: accessData, error: accessError } = await supabase
           .from('module_access')
           .select(`
             id,
@@ -86,34 +87,41 @@ export default function EncoursPage() {
             access_type,
             expires_at,
             metadata,
-            modules!inner(
-              id,
-              title,
-              description,
-              category,
-              price
-            )
+            module_id
           `)
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
 
-        if (error) {
-          console.error('❌ Erreur chargement sélections:', error);
-          console.error('Détails de l\'erreur:', {
-            code: error.code,
-            message: error.message,
-            details: error.details,
-            hint: error.hint
-          });
-          
-          // Afficher l'erreur à l'utilisateur
+        if (accessError) {
+          console.error('❌ Erreur chargement accès modules:', accessError);
           setActiveSubscriptions([]);
-          setError(`Erreur de chargement: ${error.message}`);
-        } else {
-          setActiveSubscriptions(data || []);
-          setError(null);
-          console.log('✅ Sélections actives chargées:', data);
+          setError(`Erreur de chargement: ${accessError.message}`);
+          return;
         }
+
+        // Ensuite, récupérer les détails des modules pour chaque accès
+        const modulesWithDetails = [];
+        for (const access of accessData || []) {
+          const { data: moduleData, error: moduleError } = await supabase
+            .from('modules')
+            .select('id, title, description, category, price')
+            .eq('id', access.module_id)
+            .single();
+
+          if (moduleError) {
+            console.error(`❌ Erreur chargement module ${access.module_id}:`, moduleError);
+            continue;
+          }
+
+          modulesWithDetails.push({
+            ...access,
+            modules: moduleData
+          });
+        }
+
+        setActiveSubscriptions(modulesWithDetails);
+        setError(null);
+        console.log('✅ Sélections actives chargées:', modulesWithDetails);
       } catch (error) {
                   console.error('❌ Erreur exception chargement sélections:', error);
       } finally {
