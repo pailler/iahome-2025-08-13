@@ -536,6 +536,27 @@ export default function EncoursPage() {
                   </div>
                 </div>
               )}
+
+              {/* Information sur les modules permanents */}
+              {activeSubscriptions.filter(access => !access.expires_at).length > 0 && (
+                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="text-green-600 mr-3">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-green-800">
+                        Modules avec accès permanent
+                      </h3>
+                      <p className="text-sm text-green-700 mt-1">
+                        {activeSubscriptions.filter(access => !access.expires_at).map(access => access.modules.title).join(', ')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <div className="text-2xl font-bold text-blue-600">{activeSubscriptions.length}</div>
@@ -564,10 +585,19 @@ export default function EncoursPage() {
                           if (hours > 0) return `${hours}h`;
                           return '1h';
                         })()
-                      : '∞'
+                      : activeSubscriptions.filter(access => !access.expires_at).length > 0 
+                        ? '∞'
+                        : '0'
                     }
                   </div>
-                  <div className="text-sm text-gray-600">Temps restant (min)</div>
+                  <div className="text-sm text-gray-600">
+                    {activeSubscriptions.filter(access => access.expires_at).length > 0 
+                      ? 'Temps restant (min)'
+                      : activeSubscriptions.filter(access => !access.expires_at).length > 0
+                        ? 'Modules permanents'
+                        : 'Aucun module'
+                    }
+                  </div>
                 </div>
               </div>
             </div>
@@ -625,6 +655,14 @@ export default function EncoursPage() {
                             </span>
                           </div>
                         )}
+                        {!hasExpiration && (
+                          <div className="text-sm text-gray-600">
+                            <span className="font-medium">Durée d'accès :</span> 
+                            <span className="ml-1 px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-700">
+                              Illimitée
+                            </span>
+                          </div>
+                        )}
                         <div className="text-sm text-gray-600">
                           <span className="font-medium">Type d'accès :</span> 
                           <span className="ml-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
@@ -634,7 +672,7 @@ export default function EncoursPage() {
                         <div className="text-sm text-gray-600">
                           <span className="font-medium">Conditions :</span> 
                           <span className="ml-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs">
-                            {getAccessConditions(module.title)}
+                            {hasExpiration ? getAccessConditions(module.title) : 'Accès permanent'}
                           </span>
                         </div>
                       </div>
