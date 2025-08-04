@@ -246,7 +246,13 @@ export default function EncoursPage() {
       const baseUrl = moduleUrls[moduleName] || 'https://stablediffusion.regispailler.fr';
       const accessUrl = `${baseUrl}?token=${accessToken}`;
       console.log('🔗 URL d\'accès:', accessUrl);
-      window.open(accessUrl, '_blank');
+      
+      // Ouvrir dans une iframe au lieu d'un nouvel onglet
+      setIframeModal({
+        isOpen: true,
+        url: accessUrl,
+        title: moduleTitle
+      });
     } catch (error) {
       console.error('❌ Erreur lors de l\'accès:', error);
       alert(`Erreur lors de l'accès: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
