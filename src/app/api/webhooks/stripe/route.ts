@@ -310,10 +310,10 @@ async function addModuleAccess(userEmail: string, moduleId: string, sessionId: s
       return;
     }
 
-    // Récupérer le module pour obtenir son UUID
+    // Vérifier si le module existe
     const { data: moduleData, error: moduleError } = await supabase
       .from('modules')
-      .select('id')
+      .select('id, title')
       .eq('id', moduleId)
       .single();
 
@@ -322,14 +322,14 @@ async function addModuleAccess(userEmail: string, moduleId: string, sessionId: s
       return;
     }
 
-    console.log('✅ Module trouvé, UUID:', moduleData.id);
+    console.log('✅ Module trouvé:', moduleData.title, '(ID:', moduleData.id + ')');
 
     // Vérifier si l'accès existe déjà
     const { data: existingAccess, error: checkError } = await supabase
       .from('module_access')
       .select('id')
       .eq('user_id', userData.user.id)
-      .eq('module_id', moduleData.id)
+      .eq('module_id', moduleId)
       .single();
 
     if (existingAccess) {
@@ -337,12 +337,12 @@ async function addModuleAccess(userEmail: string, moduleId: string, sessionId: s
       return;
     }
 
-    // Créer l'accès module avec l'UUID du module
+    // Créer l'accès module avec l'ID numérique du module
     const { data: accessData, error: accessError } = await supabase
       .from('module_access')
       .insert({
         user_id: userData.user.id,
-        module_id: moduleData.id, // Utiliser l'UUID du module
+        module_id: moduleId, // Utiliser l'ID numérique du module
         access_type: 'purchase',
         metadata: {
           session_id: sessionId,
