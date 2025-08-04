@@ -45,7 +45,9 @@ export async function POST(request: NextRequest) {
         break;
       
       case 'payment_intent.succeeded':
-        await handlePaymentIntentSucceeded(event.data.object as Stripe.PaymentIntent);
+        // Ignorer les payment_intent.succeeded car ils n'ont pas les métadonnées
+        // Les métadonnées sont dans checkout.session.completed
+        console.log('🔍 Payment Intent succeeded ignoré (métadonnées dans checkout.session.completed)');
         break;
       
       case 'invoice.payment_succeeded':
@@ -80,14 +82,20 @@ export async function POST(request: NextRequest) {
 
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
   console.log('🔍 Debug - Paiement réussi pour la session:', session.id);
+  console.log('🔍 Debug - Session complète:', JSON.stringify(session, null, 2));
+  
   const customerEmail = session.customer_email || session.customer_details?.email;
   const amount = session.amount_total;
   
   // Récupérer les IDs des modules depuis les métadonnées
   const itemsIds = session.metadata?.items_ids ? session.metadata.items_ids.split(',') : [];
+  console.log('🔍 Debug - Email client:', customerEmail);
   console.log('🔍 Debug - IDs des modules:', itemsIds);
+  console.log('🔍 Debug - Montant:', amount);
+  console.log('🔍 Debug - Métadonnées:', session.metadata);
   
   if (customerEmail && itemsIds.length > 0) {
+    console.log('🔍 Debug - Envoi email de confirmation à:', customerEmail);
     // Créer un objet items pour l'email
     const items = itemsIds.map((id: string) => ({ id, module_id: id }));
     await sendPaymentConfirmationEmail(customerEmail, session, items, amount);
@@ -98,6 +106,9 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     }
   } else {
     console.error('❌ Erreur - Email client ou IDs modules manquants dans la session Stripe');
+    console.error('❌ Email client:', customerEmail);
+    console.error('❌ IDs modules:', itemsIds);
+    console.error('❌ Métadonnées:', session.metadata);
   }
 }
 
@@ -329,7 +340,7 @@ async function addModuleAccess(userEmail: string, moduleId: string, sessionId: s
       .from('module_access')
       .select('id')
       .eq('user_id', userData.user.id)
-      .eq('module_id', moduleId)
+      .eq('module_id', parseInt(moduleId))
       .single();
 
     if (existingAccess) {
