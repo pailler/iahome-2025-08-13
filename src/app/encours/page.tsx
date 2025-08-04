@@ -287,6 +287,51 @@ export default function EncoursPage() {
     return diffDays;
   };
 
+  // Fonction pour formater la durée restante de manière détaillée
+  const formatTimeRemaining = (endDate: string) => {
+    const end = new Date(endDate);
+    const now = new Date();
+    const diffTime = end.getTime() - now.getTime();
+    
+    if (diffTime <= 0) {
+      return 'Expiré';
+    }
+    
+    const days = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diffTime % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (days > 0) {
+      return `${days} jour${days > 1 ? 's' : ''}${hours > 0 ? ` ${hours}h` : ''}`;
+    } else if (hours > 0) {
+      return `${hours}h${minutes > 0 ? ` ${minutes}min` : ''}`;
+    } else {
+      return `${minutes}min`;
+    }
+  };
+
+  // Fonction pour obtenir la couleur selon le temps restant
+  const getTimeRemainingColor = (endDate: string) => {
+    const end = new Date(endDate);
+    const now = new Date();
+    const diffTime = end.getTime() - now.getTime();
+    const diffHours = diffTime / (1000 * 60 * 60);
+    
+    if (diffTime <= 0) {
+      return 'bg-red-100 text-red-700';
+    } else if (diffHours <= 1) {
+      return 'bg-red-100 text-red-700';
+    } else if (diffHours <= 6) {
+      return 'bg-orange-100 text-orange-700';
+    } else if (diffHours <= 24) {
+      return 'bg-yellow-100 text-yellow-700';
+    } else if (diffHours <= 168) { // 7 jours
+      return 'bg-blue-100 text-blue-700';
+    } else {
+      return 'bg-green-100 text-green-700';
+    }
+  };
+
   // Fonction pour vérifier l'accès à un module
   const checkModuleAccess = async (moduleName: string) => {
     if (!session?.user?.id) return { canAccess: false, reason: 'Utilisateur non connecté' };
@@ -427,6 +472,70 @@ export default function EncoursPage() {
               <h2 className="text-lg font-semibold text-gray-900 mb-4">
                 📊 Résumé de vos sélections
               </h2>
+              
+              {/* Alerte pour les modules expirés */}
+              {activeSubscriptions.filter(access => {
+                if (!access.expires_at) return false;
+                const end = new Date(access.expires_at);
+                const now = new Date();
+                return end.getTime() <= now.getTime();
+              }).length > 0 && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="text-red-600 mr-3">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-red-800">
+                        Modules expirés
+                      </h3>
+                      <p className="text-sm text-red-700 mt-1">
+                        {activeSubscriptions.filter(access => {
+                          if (!access.expires_at) return false;
+                          const end = new Date(access.expires_at);
+                          const now = new Date();
+                          return end.getTime() <= now.getTime();
+                        }).map(access => access.modules.title).join(', ')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Alerte pour les modules qui expirent bientôt */}
+              {activeSubscriptions.filter(access => {
+                if (!access.expires_at) return false;
+                const end = new Date(access.expires_at);
+                const now = new Date();
+                const diffHours = (end.getTime() - now.getTime()) / (1000 * 60 * 60);
+                return diffHours <= 24 && diffHours > 0;
+              }).length > 0 && (
+                <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="text-yellow-600 mr-3">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-yellow-800">
+                        Modules qui expirent bientôt
+                      </h3>
+                      <p className="text-sm text-yellow-700 mt-1">
+                        {activeSubscriptions.filter(access => {
+                          if (!access.expires_at) return false;
+                          const end = new Date(access.expires_at);
+                          const now = new Date();
+                          const diffHours = (end.getTime() - now.getTime()) / (1000 * 60 * 60);
+                          return diffHours <= 24 && diffHours > 0;
+                        }).map(access => access.modules.title).join(', ')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <div className="text-2xl font-bold text-blue-600">{activeSubscriptions.length}</div>
@@ -441,13 +550,24 @@ export default function EncoursPage() {
                 <div className="bg-orange-50 p-4 rounded-lg">
                   <div className="text-2xl font-bold text-orange-600">
                     {activeSubscriptions.filter(access => access.expires_at).length > 0 
-                      ? Math.min(...activeSubscriptions
-                          .filter(access => access.expires_at)
-                          .map(access => getDaysRemaining(access.expires_at)))
+                      ? (() => {
+                          const expiringModules = activeSubscriptions.filter(access => access.expires_at);
+                          const minTimeRemaining = Math.min(...expiringModules.map(access => {
+                            const end = new Date(access.expires_at);
+                            const now = new Date();
+                            return end.getTime() - now.getTime();
+                          }));
+                          if (minTimeRemaining <= 0) return 'Expiré';
+                          const days = Math.floor(minTimeRemaining / (1000 * 60 * 60 * 24));
+                          const hours = Math.floor((minTimeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                          if (days > 0) return `${days}j`;
+                          if (hours > 0) return `${hours}h`;
+                          return '1h';
+                        })()
                       : '∞'
                     }
                   </div>
-                  <div className="text-sm text-gray-600">Jours restants (min)</div>
+                  <div className="text-sm text-gray-600">Temps restant (min)</div>
                 </div>
               </div>
             </div>
@@ -459,24 +579,24 @@ export default function EncoursPage() {
                 const daysRemaining = hasExpiration ? getDaysRemaining(access.expires_at) : null;
                 
                 return (
-                  <div key={access.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                  <div key={access.id} className={`bg-white rounded-lg shadow-sm border overflow-hidden ${
+                    hasExpiration && new Date(access.expires_at) <= new Date() 
+                      ? 'border-red-300 bg-red-50' 
+                      : hasExpiration && (new Date(access.expires_at).getTime() - new Date().getTime()) <= 24 * 60 * 60 * 1000
+                        ? 'border-yellow-300 bg-yellow-50'
+                        : 'border-gray-200'
+                  }`}>
                     <div className="p-6">
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-semibold text-gray-900">
                           {module.title}
                         </h3>
                         {hasExpiration ? (
-                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                            daysRemaining <= 7 
-                              ? 'bg-red-100 text-red-700' 
-                              : daysRemaining <= 30 
-                                ? 'bg-orange-100 text-orange-700'
-                                : 'bg-green-100 text-green-700'
-                          }`}>
-                            {daysRemaining} jours
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${getTimeRemainingColor(access.expires_at)}`}>
+                            {formatTimeRemaining(access.expires_at)}
                           </span>
                         ) : (
-                          <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                          <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
                             Accès permanent
                           </span>
                         )}
@@ -497,6 +617,14 @@ export default function EncoursPage() {
                             <span className="font-medium">Expire le :</span> {formatDate(access.expires_at)}
                           </div>
                         )}
+                        {hasExpiration && (
+                          <div className="text-sm text-gray-600">
+                            <span className="font-medium">Temps restant :</span> 
+                            <span className={`ml-1 px-2 py-1 rounded text-xs font-medium ${getTimeRemainingColor(access.expires_at)}`}>
+                              {formatTimeRemaining(access.expires_at)}
+                            </span>
+                          </div>
+                        )}
                         <div className="text-sm text-gray-600">
                           <span className="font-medium">Type d'accès :</span> 
                           <span className="ml-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
@@ -512,15 +640,31 @@ export default function EncoursPage() {
                       </div>
 
                       <button 
-                        className="w-full px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                        className={`w-full px-4 py-2 rounded-lg transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-1 ${
+                          hasExpiration && new Date(access.expires_at) <= new Date()
+                            ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                            : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white'
+                        }`}
                         onClick={async () => {
+                          if (hasExpiration && new Date(access.expires_at) <= new Date()) {
+                            return; // Module expiré, pas d'action
+                          }
                           // Utiliser la fonction JWT qui fonctionne
                           await accessModuleWithJWT(module.title, module.id);
                         }}
-                        title={`Accéder à ${module.title} avec JWT`}
+                        title={hasExpiration && new Date(access.expires_at) <= new Date() 
+                          ? 'Module expiré' 
+                          : `Accéder à ${module.title} avec JWT`
+                        }
+                        disabled={hasExpiration && new Date(access.expires_at) <= new Date()}
                       >
-                        <span className="text-xl mr-2">🔑</span>
-                        {module.price === '0' ? 'Accéder gratuitement' : 'Accéder à ' + module.title}
+                        <span className="text-xl mr-2">
+                          {hasExpiration && new Date(access.expires_at) <= new Date() ? '⏰' : '🔑'}
+                        </span>
+                        {hasExpiration && new Date(access.expires_at) <= new Date() 
+                          ? 'Module expiré' 
+                          : (module.price === '0' ? 'Accéder gratuitement' : 'Accéder à ' + module.title)
+                        }
                       </button>
                     </div>
                   </div>
