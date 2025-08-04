@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🔍 Génération de token d\'accès JWT...');
     
-    const { moduleId, moduleName } = await request.json();
+    const { moduleId, moduleName, expirationHours } = await request.json();
     
     if (!moduleId || !moduleName) {
       return NextResponse.json(
@@ -16,6 +16,10 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Définir la durée d'expiration (par défaut 72h, ou la valeur spécifiée)
+    const defaultExpirationHours = 72;
+    const hours = expirationHours || defaultExpirationHours;
 
     // Vérifier l'authentification
     const authHeader = request.headers.get('authorization');
@@ -47,12 +51,12 @@ export async function POST(request: NextRequest) {
       moduleId: moduleId,
       moduleName: moduleName,
       accessLevel: 'premium',
-      expiresAt: Date.now() + (72 * 60 * 60 * 1000), // 72h
+      expiresAt: Date.now() + (hours * 60 * 60 * 1000), // Heures spécifiées
       permissions: ['read', 'access', 'write', 'advanced_features'],
       issuedAt: Date.now()
     };
 
-    const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: '72h' });
+    const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: `${hours}h` });
     
     console.log('✅ Token JWT généré avec succès pour:', moduleName);
     console.log('🔍 Payload du token:', payload);
@@ -60,7 +64,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       accessToken,
-      expiresIn: '72h',
+      expiresIn: `${hours}h`,
       moduleName,
       permissions: payload.permissions,
       userEmail: user.email,

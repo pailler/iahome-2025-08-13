@@ -211,6 +211,10 @@ export default function EncoursPage() {
 
     try {
       console.log('🔍 Génération du token JWT pour:', moduleTitle);
+      
+      // Définir la durée d'expiration spécifique pour certains modules
+      const expirationHours = moduleTitle.toLowerCase() === 'ruinedfooocus' ? 12 : undefined;
+      
       const response = await fetch('/api/generate-access-token', {
         method: 'POST',
         headers: {
@@ -219,7 +223,8 @@ export default function EncoursPage() {
         },
         body: JSON.stringify({
           moduleId: moduleId,
-          moduleName: moduleTitle.toLowerCase().replace(/\s+/g, '')
+          moduleName: moduleTitle.toLowerCase().replace(/\s+/g, ''),
+          expirationHours: expirationHours
         }),
       });
       
@@ -240,7 +245,9 @@ export default function EncoursPage() {
         'librespeed': 'https://librespeed.regispailler.fr',
         'psitransfer': 'https://psitransfer.regispailler.fr',
         'pdf+': 'https://pdfplus.regispailler.fr',
-        'aiassistant': 'https://aiassistant.regispailler.fr'
+        'aiassistant': 'https://aiassistant.regispailler.fr',
+        'cogstudio': 'https://cogstudio.regispailler.fr',
+        'ruinedfooocus': 'https://ruinedfooocus.regispailler.fr'
       };
       
       const baseUrl = moduleUrls[moduleName] || 'https://stablediffusion.regispailler.fr';
