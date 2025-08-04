@@ -485,7 +485,8 @@ export default function CardDetailPage() {
                                 'librespeed': 'https://librespeed.regispailler.fr',
                                 'psitransfer': 'https://psitransfer.regispailler.fr',
                                 'pdf+': 'https://pdfplus.regispailler.fr',
-                                'aiassistant': 'http://localhost:7864'
+                                'aiassistant': 'http://localhost:7864',
+                                'cogstudio': 'https://cogstudio.regispailler.fr'
                               };
                               const baseUrl = moduleUrls[moduleName] || 'http://localhost:7862';
                               const accessUrl = `${baseUrl}?token=${accessToken}`;
