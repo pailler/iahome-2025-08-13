@@ -229,7 +229,7 @@ export default function AdminModulesPage() {
       
       if (moduleTitle === 'Metube') {
         // Vérifier le statut de Metube sur le port 7862
-        const response = await fetch('http://localhost:7862/', { 
+        const response = await fetch('https://metube.regispailler.fr/', { 
           method: 'HEAD',
           mode: 'no-cors' // Pour éviter les erreurs CORS
         });
@@ -497,18 +497,19 @@ function UnifiedModuleModal({ module, isAdding, onSave, onClose, onCheckStatus, 
     const moduleName = module.title.toLowerCase().replace(/\s+/g, '');
     
     // Mapping des URLs des modules
-    const moduleUrls: { [key: string]: string } = {
-      'stablediffusion': 'http://localhost:7860',
-      'iaphoto': 'http://localhost:7861', 
-      'iametube': 'http://localhost:7862',
-      'chatgpt': 'http://localhost:7863',
-      'librespeed': 'https://librespeed.regispailler.fr',
-      'psitransfer': 'https://psitransfer.regispailler.fr',
-      'pdf+': 'https://pdfplus.regispailler.fr',
-      'aiassistant': 'http://localhost:7864'
-    };
-
-    const baseUrl = moduleUrls[moduleName] || 'http://localhost:7862';
+                                  const moduleUrls: { [key: string]: string } = {
+                                'stablediffusion': 'https://stablediffusion.regispailler.fr',
+                                'iaphoto': 'https://iaphoto.regispailler.fr', 
+                                'iametube': 'https://metube.regispailler.fr',
+                                'chatgpt': 'https://chatgpt.regispailler.fr',
+                                'librespeed': 'https://librespeed.regispailler.fr',
+                                'psitransfer': 'https://psitransfer.regispailler.fr',
+                                'pdf+': 'https://pdfplus.regispailler.fr',
+                                'aiassistant': 'https://aiassistant.regispailler.fr',
+                                'cogstudio': 'https://cogstudio.regispailler.fr'
+                              };
+                              
+                              const baseUrl = moduleUrls[moduleName] || 'https://stablediffusion.regispailler.fr';
     const accessUrl = `${baseUrl}?token={JWT_TOKEN}`;
     
     return {

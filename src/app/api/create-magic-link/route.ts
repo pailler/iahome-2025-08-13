@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     console.log('✅ Magic link créé dans Supabase:', data.id);
 
     // Construire l'URL du magic link
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:8021';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://home.regispailler.fr';
     let magicLinkUrl: string;
 
     if (redirectUrl) {

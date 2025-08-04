@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     console.log('🔍 Debug - Items:', items.map(item => ({ title: item.title, price: item.price })));
 
     // Vérifier l'URL de l'application
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:8021';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://home.regispailler.fr';
     console.log('🔍 Debug - URL de l\'application:', appUrl);
 
     // Préparer les métadonnées limitées (max 500 caractères)

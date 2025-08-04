@@ -71,7 +71,7 @@ async function verifyMigration() {
 
     // 5. Test du chat IA
     console.log('\n🤖 Test du chat IA avec la nouvelle structure...');
-    const response = await fetch('http://localhost:8021/api/chat', {
+    const response = await fetch('https://home.regispailler.fr/api/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

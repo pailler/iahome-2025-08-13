@@ -34,11 +34,70 @@ export default function CardDetailPage() {
   const [session, setSession] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
   const [selectedCards, setSelectedCards] = useState<any[]>([]);
+  const [userSubscriptions, setUserSubscriptions] = useState<{[key: string]: any}>({});
   const [iframeModal, setIframeModal] = useState<{isOpen: boolean, url: string, title: string}>({
     isOpen: false,
     url: '',
     title: ''
   });
+
+  // Fonction pour accéder aux modules avec JWT (comme dans la page /encours)
+  const accessModuleWithJWT = async (moduleTitle: string, moduleId: string) => {
+    if (!session) {
+      alert('Vous devez être connecté pour accéder à ce module');
+      return;
+    }
+
+    try {
+      console.log('🔍 Génération du token JWT pour:', moduleTitle);
+      const response = await fetch('/api/generate-access-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({
+          moduleId: moduleId,
+          moduleName: moduleTitle.toLowerCase().replace(/\s+/g, '')
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Erreur HTTP ${response.status}`);
+      }
+      
+      const { accessToken, moduleName } = await response.json();
+      console.log('✅ Token JWT généré avec succès');
+      console.log('🔍 Token (premiers caractères):', accessToken.substring(0, 50) + '...');
+      
+      const moduleUrls: { [key: string]: string } = {
+        'stablediffusion': 'https://stablediffusion.regispailler.fr',
+        'iaphoto': 'https://iaphoto.regispailler.fr', 
+        'iametube': 'https://metube.regispailler.fr',
+        'chatgpt': 'https://chatgpt.regispailler.fr',
+        'librespeed': 'https://librespeed.regispailler.fr',
+        'psitransfer': 'https://psitransfer.regispailler.fr',
+        'pdf+': 'https://pdfplus.regispailler.fr',
+        'aiassistant': 'https://aiassistant.regispailler.fr',
+        'cogstudio': 'https://cogstudio.regispailler.fr'
+      };
+      
+      const baseUrl = moduleUrls[moduleName] || 'https://stablediffusion.regispailler.fr';
+      const accessUrl = `${baseUrl}?token=${accessToken}`;
+      console.log('🔗 URL d\'accès:', accessUrl);
+      
+      // Ouvrir dans une iframe au lieu d'un nouvel onglet
+      setIframeModal({
+        isOpen: true,
+        url: accessUrl,
+        title: moduleTitle
+      });
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'accès:', error);
+      alert(`Erreur lors de l'accès: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+    }
+  };
 
   // Vérifier la session
   useEffect(() => {
@@ -59,6 +118,61 @@ export default function CardDetailPage() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Récupérer les abonnements de l'utilisateur
+  useEffect(() => {
+    const fetchUserSubscriptions = async () => {
+      if (!session?.user?.id) {
+        setUserSubscriptions({});
+        return;
+      }
+
+      try {
+        const { data: accessData, error: accessError } = await supabase
+          .from('module_access')
+          .select('id, created_at, access_type, expires_at, metadata, module_id')
+          .eq('user_id', session.user.id);
+
+        if (accessError) {
+          console.error('❌ Erreur chargement accès:', accessError);
+          return;
+        }
+
+        const subscriptions: {[key: string]: any} = {};
+        
+        for (const access of accessData || []) {
+          try {
+            const { data: moduleData, error: moduleError } = await supabase
+              .from('modules')
+              .select('id, title, price, category')
+              .eq('id', access.module_id)
+              .single();
+
+            if (moduleError) {
+              console.error(`❌ Erreur chargement module ${access.module_id}:`, moduleError);
+              continue;
+            }
+
+            if (moduleData) {
+              subscriptions[moduleData.title] = {
+                ...moduleData,
+                access: access
+              };
+            }
+          } catch (error) {
+            console.error(`❌ Exception chargement module ${access.module_id}:`, error);
+            continue;
+          }
+        }
+
+        setUserSubscriptions(subscriptions);
+      } catch (error) {
+        console.error('❌ Erreur chargement abonnements:', error);
+      }
+    };
+
+    fetchUserSubscriptions();
+  }, [session?.user?.id]);
 
           // Charger les modules sélectionnés depuis le localStorage
   useEffect(() => {
@@ -308,7 +422,7 @@ export default function CardDetailPage() {
 
                 <div className="space-y-6">
                   {/* Bouton d'abonnement ou d'accès gratuit */}
-                  {card.price === 0 && session ? (
+                  {card.price === '0' && session ? (
                     // Bouton d'accès gratuit pour les modules gratuits (uniquement si connecté)
                     <button 
                       className={`w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 ${
@@ -343,7 +457,7 @@ export default function CardDetailPage() {
                             }
                             const { accessToken } = await response.json();
                             console.log('✅ Token JWT généré avec succès pour Metube');
-                            const accessUrl = `http://localhost:7862?token=${accessToken}`;
+                            const accessUrl = `https://metube.regispailler.fr?token=${accessToken}`;
                             console.log('🔗 URL d\'accès Metube:', accessUrl);
                             window.open(accessUrl, '_blank');
                           } catch (error) {
@@ -376,7 +490,7 @@ export default function CardDetailPage() {
                       <span className="text-xl">{card.title === 'Metube' && session ? '🔑' : '🆓'}</span>
                       <span>{card.title === 'Metube' && session ? 'Accès gratuit' : 'Accéder gratuitement'}</span>
                     </button>
-                  ) : card.price === 0 && !session ? (
+                  ) : card.price === '0' && !session ? (
                     // Message pour les modules gratuits quand l'utilisateur n'est pas connecté
                     <div className="text-center p-4 bg-gray-100 rounded-lg">
                       <p className="text-gray-600 mb-2">Module gratuit</p>
@@ -400,7 +514,7 @@ export default function CardDetailPage() {
                       )}
                       
                                              {/* Bouton "Activer la sélection" qui apparaît après avoir cliqué sur "Choisir" (uniquement pour les modules payants) */}
-                       {isCardSelected(card.id) && card.price !== 0 && (
+                       {isCardSelected(card.id) && card.price !== '0' && (
                          <button 
                            className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
                                                        onClick={async () => {
@@ -452,56 +566,18 @@ export default function CardDetailPage() {
                          </button>
                        )}
 
-                      {/* Bouton Test JWT - toujours visible si session existe */}
-                      {session && (
-                        <button 
-                          className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-                          onClick={async () => {
-                            try {
-                              console.log('🔍 Test JWT - Génération du token pour:', card.title);
-                              const response = await fetch('/api/generate-access-token', {
-                                method: 'POST',
-                                headers: {
-                                  'Content-Type': 'application/json',
-                                  'Authorization': `Bearer ${session?.access_token}`
-                                },
-                                body: JSON.stringify({
-                                  moduleId: card.id,
-                                  moduleName: card.title.toLowerCase().replace(/\s+/g, '')
-                                }),
-                              });
-                              if (!response.ok) {
-                                const errorData = await response.json();
-                                throw new Error(errorData.error || `Erreur HTTP ${response.status}`);
-                              }
-                              const { accessToken, moduleName } = await response.json();
-                              console.log('✅ Token JWT généré avec succès');
-                              console.log('🔍 Token (premiers caractères):', accessToken.substring(0, 50) + '...');
-                              const moduleUrls: { [key: string]: string } = {
-                                'stablediffusion': 'http://localhost:7860',
-                                'iaphoto': 'http://localhost:7861', 
-                                'iametube': 'http://localhost:7862',
-                                'chatgpt': 'http://localhost:7863',
-                                'librespeed': 'https://librespeed.regispailler.fr',
-                                'psitransfer': 'https://psitransfer.regispailler.fr',
-                                'pdf+': 'https://pdfplus.regispailler.fr',
-                                'aiassistant': 'http://localhost:7864',
-                                'cogstudio': 'https://cogstudio.regispailler.fr'
-                              };
-                              const baseUrl = moduleUrls[moduleName] || 'http://localhost:7862';
-                              const accessUrl = `${baseUrl}?token=${accessToken}`;
-                              console.log('🔗 URL d\'accès:', accessUrl);
-                              window.open(accessUrl, '_blank');
-                            } catch (error) {
-                              console.error('❌ Erreur lors de l\'accès:', error);
-                              alert(`Erreur lors de l'accès: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
-                            }
-                          }}
-                        >
-                          <span className="text-xl">🔑</span>
-                          <span>Test JWT - Accéder à {card.title}</span>
-                        </button>
-                      )}
+                                             {/* Bouton JWT - visible seulement si l'utilisateur a accès au module */}
+                       {session && userSubscriptions[card.title] && (
+                         <button 
+                           className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                           onClick={async () => {
+                             await accessModuleWithJWT(card.title, card.id);
+                           }}
+                         >
+                           <span className="text-xl">🔑</span>
+                           <span>Accéder à {card.title}</span>
+                         </button>
+                       )}
                     </div>
                   )}
 
