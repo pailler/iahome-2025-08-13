@@ -86,7 +86,7 @@ export default function EncoursPage() {
             access_type,
             expires_at,
             metadata,
-            cartes!inner(
+            modules!inner(
               id,
               title,
               description,
@@ -353,7 +353,7 @@ export default function EncoursPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {activeSubscriptions.map((access) => {
-                const module = access.cartes;
+                const module = access.modules;
                 const hasExpiration = access.expires_at;
                 const daysRemaining = hasExpiration ? getDaysRemaining(access.expires_at) : null;
                 
@@ -447,6 +447,7 @@ export default function EncoursPage() {
                                 'Librespeed': 'https://librespeed.regispailler.fr',
                                 'PSitransfer': 'https://psitransfer.regispailler.fr',
                                 'PDF+': 'https://pdfplus.regispailler.fr',
+                                'Stable diffusion': 'https://stablediffusion.regispailler.fr',
                               };
                               
                               const directUrl = moduleUrls[module.title];
