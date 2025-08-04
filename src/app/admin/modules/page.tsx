@@ -506,7 +506,9 @@ function UnifiedModuleModal({ module, isAdding, onSave, onClose, onCheckStatus, 
                                 'psitransfer': 'https://psitransfer.regispailler.fr',
                                 'pdf+': 'https://pdfplus.regispailler.fr',
                                 'aiassistant': 'https://aiassistant.regispailler.fr',
-                                'cogstudio': 'https://cogstudio.regispailler.fr'
+                                'cogstudio': 'https://cogstudio.regispailler.fr',
+                                'ruinedfooocus': 'https://ruinedfooocus.regispailler.fr',
+                                'invoke': 'https://invoke.regispailler.fr'
                               };
                               
                               const baseUrl = moduleUrls[moduleName] || 'https://stablediffusion.regispailler.fr';

@@ -247,7 +247,8 @@ export default function EncoursPage() {
         'pdf+': 'https://pdfplus.regispailler.fr',
         'aiassistant': 'https://aiassistant.regispailler.fr',
         'cogstudio': 'https://cogstudio.regispailler.fr',
-        'ruinedfooocus': 'https://ruinedfooocus.regispailler.fr'
+        'ruinedfooocus': 'https://ruinedfooocus.regispailler.fr',
+        'invoke': 'https://invoke.regispailler.fr'
       };
       
       const baseUrl = moduleUrls[moduleName] || 'https://stablediffusion.regispailler.fr';
