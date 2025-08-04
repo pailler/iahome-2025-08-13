@@ -313,10 +313,14 @@ async function addModuleAccess(userEmail: string, moduleId: string, sessionId: s
   try {
     console.log('🔍 Debug - Ajout accès module pour:', userEmail, moduleId);
     
-    // Récupérer l'utilisateur depuis auth.users
-    const { data: userData, error: userError } = await supabase.auth.admin.getUserByEmail(userEmail);
+    // Récupérer l'utilisateur depuis profiles (alternative à auth.admin.getUserByEmail)
+    const { data: userData, error: userError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('email', userEmail)
+      .single();
     
-    if (userError || !userData?.user) {
+    if (userError || !userData) {
       console.error('❌ Utilisateur non trouvé:', userEmail);
       return;
     }
@@ -339,7 +343,7 @@ async function addModuleAccess(userEmail: string, moduleId: string, sessionId: s
     const { data: existingAccess, error: checkError } = await supabase
       .from('module_access')
       .select('id')
-      .eq('user_id', userData.user.id)
+      .eq('user_id', userData.id)
       .eq('module_id', parseInt(moduleId))
       .single();
 
@@ -352,7 +356,7 @@ async function addModuleAccess(userEmail: string, moduleId: string, sessionId: s
     const { data: accessData, error: accessError } = await supabase
       .from('module_access')
       .insert({
-        user_id: userData.user.id,
+        user_id: userData.id,
         module_id: parseInt(moduleId), // Utiliser l'ID numérique du module
         access_type: 'purchase',
         metadata: {
@@ -375,10 +379,14 @@ async function addModuleAccess(userEmail: string, moduleId: string, sessionId: s
 
 async function createSubscriptionForModule(userEmail: string, moduleName: string, sessionId: string) {
   try {
-    // Récupérer l'utilisateur depuis auth.users
-    const { data: userData, error: userError } = await supabase.auth.admin.getUserByEmail(userEmail);
+    // Récupérer l'utilisateur depuis profiles (alternative à auth.admin.getUserByEmail)
+    const { data: userData, error: userError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('email', userEmail)
+      .single();
     
-    if (userError || !userData?.user) {
+    if (userError || !userData) {
       console.error('Utilisateur non trouvé:', userEmail);
       return;
     }
@@ -391,7 +399,7 @@ async function createSubscriptionForModule(userEmail: string, moduleName: string
     const { data: subscriptionData, error: subscriptionError } = await supabase
       .from('user_subscriptions')
       .insert({
-        user_id: userData.user.id,
+        user_id: userData.id,
         module_name: moduleName,
         subscription_id: sessionId,
         status: 'active',
