@@ -322,10 +322,10 @@ export default function EncoursPage() {
   if (!sessionChecked) {
     return (
       <div className="min-h-screen bg-blue-50 flex items-center justify-center pt-12">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Vérification de la session...</p>
-        </div>
+              <div className="text-left">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Vérification de la session...</p>
+      </div>
       </div>
     );
   }
@@ -346,7 +346,7 @@ export default function EncoursPage() {
 
         {/* Contenu principal */}
         <main className="max-w-7xl mx-auto px-6 py-8">
-          <div className="text-center py-12">
+          <div className="text-left py-12">
             <div className="text-6xl mb-4">🔐</div>
             <h2 className="text-2xl font-semibold text-gray-900 mb-2">Connexion requise</h2>
             <p className="text-gray-600 mb-6">Vous devez être connecté pour voir vos sélections en cours.</p>
@@ -385,12 +385,12 @@ export default function EncoursPage() {
       {/* Contenu principal */}
       <main className="max-w-7xl mx-auto px-6 py-8">
         {loading ? (
-          <div className="text-center py-12">
+          <div className="text-left py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-gray-600">Chargement de vos sélections...</p>
           </div>
         ) : error ? (
-          <div className="text-center py-12">
+          <div className="text-left py-12">
             <div className="text-6xl mb-4">⚠️</div>
             <h2 className="text-2xl font-semibold text-gray-900 mb-2">Erreur de chargement</h2>
             <p className="text-gray-600 mb-6">{error}</p>
@@ -410,7 +410,7 @@ export default function EncoursPage() {
             </div>
           </div>
         ) : activeSubscriptions.length === 0 ? (
-          <div className="text-center py-12">
+          <div className="text-left py-12">
             <div className="text-6xl mb-4">📭</div>
             <h2 className="text-2xl font-semibold text-gray-900 mb-2">Aucun abonnement actif</h2>
             <p className="text-gray-600 mb-6">Vous n'avez actuellement aucun abonnement en cours.</p>

@@ -300,7 +300,7 @@ export default function AdminModulesPage() {
     return (
       <div className="min-h-screen bg-gray-50 pt-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
+          <div className="text-left">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Accès refusé</h1>
             <p className="text-gray-600 mb-8">Vous devez être connecté pour accéder à cette page.</p>
             <Link href="/login" className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Se connecter</Link>
@@ -314,7 +314,7 @@ export default function AdminModulesPage() {
     return (
       <div className="min-h-screen bg-gray-50 pt-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
+          <div className="text-left">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Accès refusé</h1>
             <p className="text-gray-600 mb-8">Vous devez avoir les droits d'administrateur pour accéder à cette page.</p>
             <Link href="https://home.regispailler.fr/admin/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Retour à l'administration</Link>
@@ -352,13 +352,13 @@ export default function AdminModulesPage() {
 
         {/* Liste des modules */}
         {loading ? (
-          <div className="text-center py-12">
+          <div className="text-left py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <div className="text-gray-500">Chargement des modules...</div>
             <div className="text-sm text-gray-400 mt-2">Récupération des données depuis la base de données</div>
           </div>
         ) : modules.length === 0 ? (
-          <div className="text-center py-12">
+          <div className="text-left py-12">
             <div className="text-gray-500 mb-4">Aucun module trouvé</div>
             <button
               onClick={handleAddModule}

@@ -244,7 +244,7 @@ export default function AdminPage() {
     return (
       <div className="min-h-screen bg-gray-50 pt-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
+          <div className="text-left">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Accès refusé</h1>
             <p className="text-gray-600 mb-8">Vous devez être connecté pour accéder à cette page.</p>
             <Link href="/login" className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Se connecter</Link>
@@ -259,7 +259,7 @@ export default function AdminPage() {
       <div className="min-h-screen bg-gray-50">
         <Header />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
+          <div className="text-left">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Accès refusé</h1>
             <p className="text-gray-600 mb-8">Vous devez avoir les droits d'administrateur pour accéder à cette page.</p>
             <Link href="/" className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Retour à l'accueil</Link>

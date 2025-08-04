@@ -876,7 +876,7 @@ export default function Home() {
                 
                 {/* Éléments centraux */}
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center">
+                  <div className="text-left">
                     <div className="text-5xl font-bold text-white/30 mb-3">AI</div>
                     <div className="text-xs text-white/70">Intelligence Artificielle</div>
                   </div>
@@ -964,15 +964,15 @@ export default function Home() {
               {/* Grille de templates */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {loading ? (
-                  <div className="col-span-full text-center py-12">
+                  <div className="col-span-full text-left py-12">
                     <div className="text-gray-500">Chargement des templates...</div>
                   </div>
                 ) : filteredAndSortedModules.length === 0 ? (
-                  <div className="col-span-full text-center py-12">
+                  <div className="col-span-full text-left py-12">
                     <div className="text-gray-500">Aucun template trouvé pour "{search}"</div>
                   </div>
                 ) : currentModules.length === 0 ? (
-                  <div className="col-span-full text-center py-12">
+                  <div className="col-span-full text-left py-12">
                     <div className="text-gray-500">Aucun module à afficher (currentModules vide)</div>
                     <div className="text-sm text-gray-400 mt-2">Total modules: {filteredAndSortedModules.length}</div>
                   </div>
@@ -1231,7 +1231,7 @@ export default function Home() {
               
               {/* Informations de pagination */}
               {filteredAndSortedModules.length > 0 && (
-                <div className="text-center text-gray-600 text-sm mt-4">
+                <div className="text-left text-gray-600 text-sm mt-4">
                   Affichage de {indexOfFirstModule + 1} à {Math.min(indexOfLastModule, filteredAndSortedModules.length)} sur {filteredAndSortedModules.length} templates
                 </div>
               )}

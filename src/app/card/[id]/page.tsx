@@ -420,7 +420,7 @@ export default function CardDetailPage() {
             <div className="space-y-8">
               {/* Carte d'action avec design premium */}
               <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 p-8 hover:shadow-2xl transition-all duration-300">
-                <div className="text-center mb-8">
+                <div className="text-left mb-8">
                   <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4 rounded-2xl shadow-lg mb-4">
                     <div className="text-4xl font-bold mb-1">€{card.price}</div>
                     <div className="text-sm opacity-90">par mois</div>
@@ -499,7 +499,7 @@ export default function CardDetailPage() {
                     </button>
                   ) : card.price === '0' && !session ? (
                     // Message pour les modules gratuits quand l'utilisateur n'est pas connecté
-                    <div className="text-center p-4 bg-gray-100 rounded-lg">
+                    <div className="text-left p-4 bg-gray-100 rounded-lg">
                       <p className="text-gray-600 mb-2">Module gratuit</p>
                       <p className="text-sm text-gray-500">Connectez-vous pour accéder à ce module</p>
                     </div>
@@ -679,7 +679,7 @@ export default function CardDetailPage() {
       {card.features && card.features.length > 0 && (
         <div className="bg-gradient-to-br from-white to-blue-50/50 border-t border-gray-200/50 py-20">
           <div className="max-w-7xl mx-auto px-6">
-            <div className="text-center mb-16">
+            <div className="text-left mb-16">
               <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-4">
                 Fonctionnalités principales
               </h2>
@@ -709,7 +709,7 @@ export default function CardDetailPage() {
       {card.usage_examples && card.usage_examples.length > 0 && (
         <div className="bg-gradient-to-br from-gray-50 to-indigo-50/30 py-20">
           <div className="max-w-7xl mx-auto px-6">
-            <div className="text-center mb-16">
+            <div className="text-left mb-16">
               <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-4">
                 Exemples d'utilisation
               </h2>
@@ -740,7 +740,7 @@ export default function CardDetailPage() {
       {card.installation_steps && card.installation_steps.length > 0 && (
         <div className="bg-gradient-to-br from-white to-blue-50/50 py-20">
           <div className="max-w-7xl mx-auto px-6">
-            <div className="text-center mb-16">
+            <div className="text-left mb-16">
               <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-4">
                 Installation
               </h2>
@@ -772,10 +772,10 @@ export default function CardDetailPage() {
       {/* Zone de détails du module - Pleine largeur */}
       <div className="bg-gradient-to-br from-gray-50 to-indigo-50/30 border-t border-gray-200/50 py-20">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-4">
-              {card.subtitle || card.title}
-            </h2>
+                      <div className="text-left mb-16">
+              <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-4">
+                {card.subtitle || card.title}
+              </h2>
             <div 
               className="text-xl text-gray-600 max-w-4xl mx-auto"
               dangerouslySetInnerHTML={{ __html: card.description }}
