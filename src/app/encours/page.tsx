@@ -361,7 +361,7 @@ export default function EncoursPage() {
     if (moduleTitle === 'IA metube' || moduleTitle === 'IAmetube') {
       return '12 heures';
     }
-    return 'Accès illimité';
+    return null; // Pas de conditions pour les modules gratuits
   };
 
   if (!sessionChecked) {
@@ -639,12 +639,14 @@ export default function EncoursPage() {
                             {access.access_type}
                           </span>
                         </div>
-                        <div className="text-sm text-gray-600">
-                          <span className="font-medium">Conditions :</span> 
-                          <span className="ml-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs">
-                            {getAccessConditions(module.title)}
-                          </span>
-                        </div>
+                        {getAccessConditions(module.title) && (
+                          <div className="text-sm text-gray-600">
+                            <span className="font-medium">Conditions :</span> 
+                            <span className="ml-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs">
+                              {getAccessConditions(module.title)}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       <button 
