@@ -10,6 +10,7 @@ interface Card {
   id: string;
   title: string;
   description: string;
+  subtitle?: string;
   category: string;
   price: number;
   youtube_url?: string;
@@ -59,7 +60,7 @@ export default function CardDetailPage() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Charger les cartes sélectionnées depuis le localStorage
+          // Charger les modules sélectionnés depuis le localStorage
   useEffect(() => {
     const saved = localStorage.getItem('selectedCards');
     if (saved) {
@@ -78,7 +79,7 @@ export default function CardDetailPage() {
 
       try {
         const { data, error } = await supabase
-          .from('cartes')
+          .from('modules')
           .select('*')
           .eq('id', params.id)
           .single();
@@ -203,7 +204,7 @@ export default function CardDetailPage() {
       console.log('Abonnement à:', card.title);
     }
     
-    console.log('Nouvelles cartes sélectionnées:', newSelectedCards);
+            console.log('Nouveaux modules sélectionnés:', newSelectedCards);
     setSelectedCards(newSelectedCards);
     localStorage.setItem('selectedCards', JSON.stringify(newSelectedCards));
     console.log('localStorage mis à jour');
@@ -239,9 +240,9 @@ export default function CardDetailPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
-      {/* Fil d'Ariane amélioré */}
-      <div className="bg-white/60 backdrop-blur-sm border-b border-gray-200/50 pt-20">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+      {/* Fil d'Ariane amélioré - placé juste en dessous du Header */}
+      <div className="bg-white/60 backdrop-blur-sm border-b border-gray-200/50 pt-2">
+        <div className="max-w-7xl mx-auto px-6 py-1">
           <Breadcrumb 
             items={[
               { label: 'Accueil', href: '/' },
@@ -265,12 +266,14 @@ export default function CardDetailPage() {
                     <span className="inline-block px-4 py-2 bg-gradient-to-r from-green-400 to-emerald-500 text-white text-sm font-bold rounded-full mb-6 shadow-lg">
                       {card.category?.toUpperCase() || 'BUILDING BLOCKS'}
                     </span>
-                    <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-6 leading-tight">
+                    <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-2 leading-tight">
                       {card.title}
                     </h1>
-                    <p className="text-xl text-gray-600 leading-relaxed max-w-2xl">
-                      {card.description}
-                    </p>
+                    {card.subtitle && (
+                      <p className="text-xl text-gray-500 italic mb-6 leading-relaxed max-w-2xl">
+                        {card.subtitle}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -285,6 +288,10 @@ export default function CardDetailPage() {
                     allowFullScreen
                   ></iframe>
                 </div>
+
+                
+
+                
               </div>
             </div>
 
@@ -304,9 +311,49 @@ export default function CardDetailPage() {
                   {card.price === 0 ? (
                     // Bouton d'accès gratuit pour les modules gratuits
                     <button 
-                      className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                      className={`w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 ${
+                        card.title === 'Metube' && session 
+                          ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white'
+                          : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white'
+                      }`}
                       onClick={async () => {
-                        // Accès direct pour les modules gratuits
+                        if (!session) {
+                          alert('Connectez-vous pour accéder à ce module');
+                          return;
+                        }
+
+                        // Logique spéciale pour Metube avec JWT
+                        if (card.title === 'Metube') {
+                          try {
+                            console.log('🔍 Génération du token JWT pour Metube');
+                            const response = await fetch('/api/generate-access-token', {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${session?.access_token}`
+                              },
+                              body: JSON.stringify({
+                                moduleId: card.id,
+                                moduleName: 'metube'
+                              }),
+                            });
+                            if (!response.ok) {
+                              const errorData = await response.json();
+                              throw new Error(errorData.error || `Erreur HTTP ${response.status}`);
+                            }
+                            const { accessToken } = await response.json();
+                            console.log('✅ Token JWT généré avec succès pour Metube');
+                            const accessUrl = `http://localhost:7862?token=${accessToken}`;
+                            console.log('🔗 URL d\'accès Metube:', accessUrl);
+                            window.open(accessUrl, '_blank');
+                          } catch (error) {
+                            console.error('❌ Erreur lors de l\'accès à Metube:', error);
+                            alert(`Erreur lors de l'accès à Metube: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+                          }
+                          return;
+                        }
+
+                        // Accès direct pour les autres modules gratuits
                         const moduleUrls: { [key: string]: string } = {
                           'Librespeed': 'https://librespeed.regispailler.fr',
                           'PSitransfer': 'https://psitransfer.regispailler.fr',
@@ -326,8 +373,8 @@ export default function CardDetailPage() {
                         }
                       }}
                     >
-                      <span className="text-xl">🆓</span>
-                      <span>Accéder gratuitement</span>
+                      <span className="text-xl">{card.title === 'Metube' && session ? '🔑' : '🆓'}</span>
+                      <span>{card.title === 'Metube' && session ? 'Accès gratuit' : 'Accéder gratuitement'}</span>
                     </button>
                   ) : (
                     // Bouton de sélection pour les modules payants
@@ -628,29 +675,14 @@ export default function CardDetailPage() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-4">
-              Détails du module
+              {card.subtitle || card.title}
             </h2>
             <p className="text-xl text-gray-600 max-w-4xl mx-auto">
               {card.description}
             </p>
           </div>
           
-          {/* Description détaillée du module */}
-          <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 p-12 max-w-5xl mx-auto mb-12">
-            <h3 className="text-3xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-8 text-center">
-              À propos de {card.title}
-            </h3>
-            <div className="max-w-4xl mx-auto space-y-6">
-              <p className="text-gray-700 text-xl leading-relaxed">
-                {card.title} est une solution avancée qui révolutionne la façon dont vous travaillez avec l'intelligence artificielle. 
-                Cette plateforme offre des fonctionnalités de pointe pour optimiser vos workflows et améliorer votre productivité.
-              </p>
-              <p className="text-gray-700 text-xl leading-relaxed">
-                Que vous soyez un développeur expérimenté ou un débutant, {card.title} s'adapte à vos besoins 
-                et vous accompagne dans tous vos projets d'IA.
-              </p>
-            </div>
-          </div>
+
 
           {/* Avantages clés */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
@@ -691,6 +723,8 @@ export default function CardDetailPage() {
               </p>
             </div>
           </div>
+
+
 
           {/* Informations techniques */}
           <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 p-12">

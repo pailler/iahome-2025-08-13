@@ -1,89 +1,93 @@
 const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config();
 
-// Configuration Supabase
-const supabaseUrl = 'https://xemtoyzcihmncbrlsmhr.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhlbXRveXpjaWhtbmNicmxzbWhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0MDUzMDUsImV4cCI6MjA2NTk4MTMwNX0.afcRGhlB5Jj-7kgCV6IzUDRdGUQkHkm1Fdl1kzDdj6M';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('❌ Variables d\'environnement manquantes');
+  console.error('📝 Assurez-vous que NEXT_PUBLIC_SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY sont définies dans .env');
+  process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 async function addDetailColumns() {
-  console.log('🔧 Ajout des colonnes detail_* à la table cartes');
-  console.log('================================================');
-  console.log('');
-
   try {
-    // 1. Vérifier la structure actuelle
-    console.log('1️⃣ Vérification de la structure actuelle...');
-    const { data: sampleData, error: sampleError } = await supabase
-      .from('cartes')
-      .select('*')
-      .limit(1);
-
-    if (sampleError) {
-      console.error('❌ Erreur lors de la vérification:', sampleError);
-      return;
+    console.log('🔧 Ajout des colonnes manquantes à la table modules...');
+    
+    // Ajouter la colonne a_propos
+    console.log('📝 Ajout de la colonne a_propos...');
+    const { error: aProposError } = await supabase.rpc('exec_sql', {
+      sql: 'ALTER TABLE modules ADD COLUMN IF NOT EXISTS a_propos TEXT;'
+    });
+    
+    if (aProposError) {
+      console.log('⚠️ Erreur lors de l\'ajout de a_propos:', aProposError.message);
+    } else {
+      console.log('✅ Colonne a_propos ajoutée avec succès');
     }
 
-    if (sampleData && sampleData.length > 0) {
-      const currentColumns = Object.keys(sampleData[0]);
-      console.log('📋 Colonnes actuelles:', currentColumns);
-      console.log('');
+    // Ajouter les colonnes pour les pages détaillées
+    const detailColumns = [
+      { name: 'detail_title', type: 'TEXT' },
+      { name: 'detail_content', type: 'TEXT' },
+      { name: 'detail_meta_description', type: 'TEXT' },
+      { name: 'detail_slug', type: 'TEXT' },
+      { name: 'detail_is_published', type: 'BOOLEAN DEFAULT false' }
+    ];
+
+    for (const column of detailColumns) {
+      console.log(`📝 Ajout de la colonne ${column.name}...`);
+      const { error: columnError } = await supabase.rpc('exec_sql', {
+        sql: `ALTER TABLE modules ADD COLUMN IF NOT EXISTS ${column.name} ${column.type};`
+      });
+      
+      if (columnError) {
+        console.log(`⚠️ Erreur lors de l'ajout de ${column.name}:`, columnError.message);
+      } else {
+        console.log(`✅ Colonne ${column.name} ajoutée avec succès`);
+      }
     }
 
-    // 2. Ajouter les colonnes detail_* via une requête SQL
-    console.log('2️⃣ Ajout des colonnes detail_*...');
-    
-    // Note: Nous ne pouvons pas exécuter ALTER TABLE directement via l'API Supabase
-    // Il faut utiliser l'éditeur SQL de Supabase ou créer une fonction RPC
-    
-    console.log('⚠️ ATTENTION: Les colonnes detail_* doivent être ajoutées manuellement');
-    console.log('   Veuillez exécuter le script SQL suivant dans l\'éditeur SQL de Supabase:');
-    console.log('');
-    console.log('   ALTER TABLE cartes');
-    console.log('   ADD COLUMN IF NOT EXISTS detail_title TEXT,');
-    console.log('   ADD COLUMN IF NOT EXISTS detail_content TEXT,');
-    console.log('   ADD COLUMN IF NOT EXISTS detail_meta_description TEXT,');
-    console.log('   ADD COLUMN IF NOT EXISTS detail_slug TEXT,');
-    console.log('   ADD COLUMN IF NOT EXISTS detail_is_published BOOLEAN DEFAULT false;');
-    console.log('');
+    // Vérifier que toutes les colonnes ont été ajoutées
+    console.log('\n📊 Vérification des colonnes...');
+    const { data: columns, error: selectError } = await supabase.rpc('exec_sql', {
+      sql: `
+        SELECT column_name, data_type, is_nullable 
+        FROM information_schema.columns 
+        WHERE table_name = 'modules' 
+        AND column_name IN ('a_propos', 'detail_title', 'detail_content', 'detail_meta_description', 'detail_slug', 'detail_is_published')
+        ORDER BY column_name;
+      `
+    });
 
-    // 3. Créer un fichier SQL pour faciliter l'exécution
-    console.log('3️⃣ Création du fichier SQL...');
-    const sqlContent = `-- Script pour ajouter les colonnes detail_* à la table cartes
--- Exécutez ce script dans l'éditeur SQL de Supabase
+    if (selectError) {
+      console.error('❌ Erreur lors de la vérification:', selectError.message);
+    } else {
+      console.log('✅ Colonnes vérifiées:');
+      console.table(columns);
+    }
 
-ALTER TABLE cartes 
-ADD COLUMN IF NOT EXISTS detail_title TEXT,
-ADD COLUMN IF NOT EXISTS detail_content TEXT,
-ADD COLUMN IF NOT EXISTS detail_meta_description TEXT,
-ADD COLUMN IF NOT EXISTS detail_slug TEXT,
-ADD COLUMN IF NOT EXISTS detail_is_published BOOLEAN DEFAULT false;
+    // Afficher quelques exemples de modules pour vérifier
+    console.log('\n📋 Exemples de modules:');
+    const { data: modules, error: modulesError } = await supabase
+      .from('modules')
+      .select('id, title, a_propos, detail_title, detail_is_published')
+      .limit(3);
 
--- Vérifier que les colonnes ont été ajoutées
-SELECT column_name, data_type, is_nullable 
-FROM information_schema.columns 
-WHERE table_name = 'cartes' 
-AND column_name LIKE 'detail_%'
-ORDER BY column_name;`;
+    if (modulesError) {
+      console.error('❌ Erreur lors de la récupération des modules:', modulesError.message);
+    } else {
+      console.log('✅ Modules récupérés:');
+      console.table(modules);
+    }
 
-    const fs = require('fs');
-    fs.writeFileSync('add-detail-columns.sql', sqlContent);
-    console.log('✅ Fichier add-detail-columns.sql créé');
-    console.log('');
-
-    // 4. Instructions pour l'utilisateur
-    console.log('📋 Instructions:');
-    console.log('   1. Allez sur https://supabase.com/dashboard/project/xemtoyzcihmncbrlsmhr/sql');
-    console.log('   2. Copiez le contenu du fichier add-detail-columns.sql');
-    console.log('   3. Collez-le dans l\'éditeur SQL et exécutez');
-    console.log('   4. Vérifiez que les colonnes ont été ajoutées');
-    console.log('   5. Relancez ce script pour vérifier: node check-cartes-structure.js');
-    console.log('');
+    console.log('\n🎉 Opération terminée avec succès!');
 
   } catch (error) {
-    console.error('❌ Erreur inattendue:', error);
+    console.error('❌ Erreur:', error.message);
   }
 }
 
-// Exécuter le script
 addDetailColumns(); 

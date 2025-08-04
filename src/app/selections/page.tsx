@@ -19,7 +19,7 @@ export default function SelectionsPage() {
   // Fonction pour obtenir l'URL d'accès d'un module
   const getModuleAccessUrl = (moduleName: string) => {
     const moduleUrls: { [key: string]: string } = {
-      'IAmetube': 'https://metube.regispailler.fr',
+      'Metube': 'https://metube.regispailler.fr',
       // Ajouter d'autres modules ici quand ils seront disponibles
       // 'IAphoto': 'https://iaphoto.regispailler.fr',
       // 'IAvideo': 'https://iavideo.regispailler.fr',
@@ -183,7 +183,7 @@ export default function SelectionsPage() {
                                   {
                                                               // Accès direct pour les autres modules
                               const moduleUrls: { [key: string]: string } = {
-                                'IAmetube': 'https://metube.regispailler.fr',
+                                'Metube': 'https://metube.regispailler.fr',
                                 'IAphoto': 'https://iaphoto.regispailler.fr',
                                 'IAvideo': 'https://iavideo.regispailler.fr',
                               };

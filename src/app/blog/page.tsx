@@ -175,8 +175,8 @@ export default function BlogPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 pt-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-4 text-gray-600">Chargement des articles...</p>
@@ -188,9 +188,19 @@ export default function BlogPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="pt-20">
-        <Breadcrumb />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+      {/* Fil d'Ariane amélioré - placé juste en dessous du Header */}
+      <div className="bg-white/60 backdrop-blur-sm border-b border-gray-200/50 pt-4">
+        <div className="max-w-7xl mx-auto px-6 py-1">
+          <Breadcrumb 
+            items={[
+              { label: 'Accueil', href: '/' },
+              { label: 'Blog' }
+            ]}
+          />
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
 
         {/* Header */}
         <div className="text-center mb-12">
@@ -201,7 +211,7 @@ export default function BlogPage() {
                 Blog IAHome
               </h1>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Découvrez nos articles sur l'intelligence artificielle, les outils, les ressources et les meilleures pratiques.
+                L'intelligence artificielle : les outils, les ressources et les meilleures pratiques
               </p>
             </div>
             <div className="flex-1 flex justify-end">
@@ -350,7 +360,6 @@ export default function BlogPage() {
             </button>
           </div>
         )}
-        </div>
       </div>
     </div>
   );

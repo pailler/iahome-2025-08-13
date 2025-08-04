@@ -34,7 +34,7 @@ export default function Breadcrumb({ items = [], showHome = true }: BreadcrumbPr
         case 'admin':
           label = 'Administration';
           break;
-        case 'cartes':
+        case 'modules':
           label = 'Modules';
           break;
         case 'blog':

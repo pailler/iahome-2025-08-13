@@ -114,7 +114,7 @@ export default function Home() {
         
         // Test de connexion de base
         const { data: testData, error: testError } = await supabase
-          .from('cartes')
+          .from('modules')
           .select('count')
           .limit(1);
         
@@ -122,7 +122,7 @@ export default function Home() {
         
         console.log('Tentative de chargement des modules depuis Supabase...');
         const { data, error } = await supabase
-          .from('cartes')
+          .from('modules')
           .select('*');
         
         console.log('Réponse Supabase complète:', { data, error });
@@ -401,7 +401,7 @@ export default function Home() {
     if (confirm('Êtes-vous sûr de vouloir supprimer ce module ?')) {
       try {
         const { error } = await supabase
-          .from('cartes')
+          .from('modules')
           .delete()
           .eq('id', moduleId);
         
@@ -410,7 +410,7 @@ export default function Home() {
           alert('Erreur lors de la suppression du module');
         } else {
           // Recharger les modules
-          const { data } = await supabase.from('cartes').select('*');
+          const { data } = await supabase.from('modules').select('*');
           if (data) setModules(data);
           alert('Module supprimé avec succès');
         }
@@ -423,7 +423,7 @@ export default function Home() {
 
 
 
-  // Fonction pour redirection vers la page d'administration des cartes
+  // Fonction pour redirection vers la page d'administration des modules
   const handleAdminRedirect = () => {
     router.push('/admin');
   };
@@ -439,7 +439,7 @@ export default function Home() {
     return levels[Math.floor(Math.random() * levels.length)];
   };
 
-  // Fonction pour obtenir les propriétés d'image en rapport avec le nom de la carte
+  // Fonction pour obtenir les propriétés d'image en rapport avec le nom du module
   // Fonction pour vérifier l'accès à un module
   const checkModuleAccess = async (moduleName: string) => {
     if (!user?.id) return { canAccess: false, reason: 'Utilisateur non connecté' };
@@ -475,7 +475,7 @@ export default function Home() {
         },
         body: JSON.stringify({
           moduleName: moduleName,
-          durationMinutes: moduleName === 'IA metube' || moduleName === 'IAmetube' ? 720 : 1440 // 12h pour IA metube, 24h pour les autres
+          durationMinutes: moduleName === 'Metube' ? 720 : 1440 // 12h pour Metube, 24h pour les autres
         }),
       });
 
@@ -494,7 +494,7 @@ export default function Home() {
 
   // Fonction pour obtenir les conditions d'accès selon le module
   const getAccessConditions = (moduleTitle: string) => {
-    if (moduleTitle === 'IA metube' || moduleTitle === 'IAmetube') {
+    if (moduleTitle === 'Metube') {
       return '12 heures';
     }
     return 'Accès illimité';
@@ -503,7 +503,7 @@ export default function Home() {
   const getCardImageProps = (cardTitle: string) => {
     const title = cardTitle.toLowerCase();
     
-    // Mapping des cartes vers des visuels générés par IA
+    // Mapping des modules vers des visuels générés par IA
     const imageMapping: { [key: string]: { bgColor: string; icon: string; text: string; imageUrl: string } } = {
       'cogstudio': { 
         bgColor: 'bg-red-500', 
@@ -519,7 +519,7 @@ export default function Home() {
       },
 
 
-      'iametube': { 
+      'metube': { 
         bgColor: 'bg-red-500', 
         icon: '📺', 
         text: 'Vidéo',
@@ -993,7 +993,10 @@ export default function Home() {
                         </div>
                         
                         <Link href={`/card/${module.id}`}>
-                          <h3 className="text-lg font-semibold text-blue-900 mb-2 hover:text-blue-700 cursor-pointer transition-colors">{module.title}</h3>
+                          <h3 className="text-lg font-semibold text-blue-900 mb-1 hover:text-blue-700 cursor-pointer transition-colors">{module.title}</h3>
+                          {module.subtitle && (
+                            <p className="text-sm text-gray-500 mb-2 italic">{module.subtitle}</p>
+                          )}
                         </Link>
                         <p className="text-sm text-gray-600 mb-4">{module.description}</p>
                       </div>
@@ -1008,8 +1011,14 @@ export default function Home() {
                           let imageSrc = '';
                           
                           // Mapping spécifique pour certains modules
-                                    if (title.includes('iametube')) {
-            imageSrc = '/images/iametube-interface.svg';
+                          if (title.includes('metube')) {
+                            imageSrc = '/images/iatube.jpg';
+                          } else if (title.includes('invoke')) {
+                            imageSrc = '/images/chatgpt.jpg';
+                          } else if (title.includes('stablediffusion') || title.includes('sdnext')) {
+                            imageSrc = '/images/stablediffusion.jpg';
+                          } else if (title.includes('ruinefooocus')) {
+                            imageSrc = '/images/chatgpt.jpg';
                           } else if (title.includes('iaphoto')) {
                             imageSrc = '/images/iaphoto.jpg';
                           } else if (title.includes('chatgpt') || title.includes('gpt')) {
@@ -1021,7 +1030,7 @@ export default function Home() {
                           } else {
                             // Attribution d'images par catégorie pour tous les autres modules
                             if (category.includes('video')) {
-                              imageSrc = '/images/iametube-interface.svg';
+                              imageSrc = '/images/iatube.jpg';
                             } else if (category.includes('photo')) {
                               imageSrc = '/images/iaphoto.jpg';
                             } else if (category.includes('assistant') || category.includes('ai')) {
@@ -1076,8 +1085,8 @@ export default function Home() {
                              €{module.price}
                            </div>
                            <div className="flex gap-2">
-                             {/* Bouton d'accès direct pour les modules avec abonnement actif, modules gratuits, ou IA metube avec accès temporaire */}
-                             {session && (userSubscriptions[module.title] || module.price === 0 || module.title === 'IA metube' || module.title === 'IAmetube') && (
+                             {/* Bouton d'accès direct pour les modules avec abonnement actif ou modules gratuits (sauf Metube) */}
+{session && (userSubscriptions[module.title] || module.price === 0) && module.title !== 'Metube' && (
                                <button 
                                  className="px-4 py-2 rounded-lg font-semibold text-sm bg-green-600 hover:bg-green-700 text-white transition-colors"
                                  onClick={async () => {
@@ -1094,9 +1103,9 @@ export default function Home() {
                                    }
 
                                    // Accès direct pour tous les modules dans une iframe
-                                   if (module.title === 'IA metube' || module.title === 'IAmetube') {
-                                     // Générer un magic link de 12 heures pour IA metube
-                                     console.log('🔍 Génération d\'un magic link de 12 heures pour IA metube');
+                                   if (module.title === 'Metube') {
+                                     // Générer un magic link de 12 heures pour Metube
+                                     console.log('🔍 Génération d\'un magic link de 12 heures pour Metube');
                                      const magicLink = await generateModuleMagicLink(module.title);
                                      if (magicLink) {
                                        setIframeModal({

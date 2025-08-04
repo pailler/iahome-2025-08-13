@@ -18,7 +18,7 @@ const MODULES_CONFIG: Record<string, {
     code: 'IM',
     url: 'https://iametube.regispailler.fr',
     credentials: { username: 'admin', password: 'Rasulova75' },
-    name: 'IA Metube'
+    name: 'Metube'
   }
 };
 

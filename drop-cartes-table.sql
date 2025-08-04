@@ -1,19 +1,32 @@
--- Script pour supprimer la table cartes après migration vers modules
--- ATTENTION : Cette action est irréversible !
+-- Script pour supprimer définitivement la table cartes
+-- ATTENTION : Cette opération est irréversible !
 
--- 1. Vérifier que tous les modules sont bien dans la table modules
-SELECT 
-    COUNT(*) as total_modules,
-    COUNT(DISTINCT title) as modules_uniques
-FROM modules;
+-- Vérifier d'abord que la table modules contient toutes les données
+SELECT 'Vérification de la table modules' as info;
+SELECT COUNT(*) as nombre_modules FROM modules;
 
--- 2. Vérifier qu'il n'y a plus de données importantes dans cartes
-SELECT 
-    COUNT(*) as total_cartes
-FROM cartes;
+-- Vérifier que la table cartes existe encore
+SELECT 'Vérification de la table cartes' as info;
+SELECT EXISTS (
+  SELECT FROM information_schema.tables 
+  WHERE table_schema = 'public' 
+  AND table_name = 'cartes'
+) as table_cartes_existe;
 
--- 3. Supprimer la table cartes (décommentez la ligne suivante après vérification)
--- DROP TABLE IF EXISTS cartes CASCADE;
+-- Si la table cartes existe, la supprimer
+DROP TABLE IF EXISTS cartes CASCADE;
 
--- 4. Vérifier que la table a bien été supprimée
--- SELECT COUNT(*) FROM cartes; -- Doit retourner une erreur si la table n'existe plus 
+-- Vérifier que la table cartes a bien été supprimée
+SELECT 'Vérification après suppression' as info;
+SELECT EXISTS (
+  SELECT FROM information_schema.tables 
+  WHERE table_schema = 'public' 
+  AND table_name = 'cartes'
+) as table_cartes_existe_apres;
+
+-- Afficher les tables restantes
+SELECT 'Tables restantes dans le schéma public' as info;
+SELECT table_name 
+FROM information_schema.tables 
+WHERE table_schema = 'public' 
+ORDER BY table_name; 

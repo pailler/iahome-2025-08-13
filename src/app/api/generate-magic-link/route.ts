@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Déterminer la durée d'accès selon le module
-    const isTimeLimitedModule = moduleName === 'IAmetube' || moduleName === 'IA metube';
+    const isTimeLimitedModule = moduleName === 'Metube';
     
     // Pour les modules sans limitation de temps, vérifier l'abonnement
     if (!isTimeLimitedModule) {
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Utiliser la durée spécifiée ou la durée par défaut
-    const accessDurationMinutes = durationMinutes || (isTimeLimitedModule ? 720 : 1440); // 12 heures pour IA metube, 24h pour les autres
+    const accessDurationMinutes = durationMinutes || (isTimeLimitedModule ? 720 : 1440); // 12 heures pour Metube, 24h pour les autres
     
     // Générer le magic link avec la durée appropriée
     const magicLinkToken = generateMagicLink(currentUserId, moduleName, permissions || ['access'], accessDurationMinutes);
@@ -58,9 +58,8 @@ export async function POST(request: NextRequest) {
 
 
     // Configuration des URLs de base pour chaque module
-    const moduleUrls: { [key: string]: string } = {
-      'IAmetube': 'https://metube.regispailler.fr', // Utiliser l'adresse publique
-      'IA metube': 'https://metube.regispailler.fr', // Utiliser l'adresse publique
+          const moduleUrls: { [key: string]: string } = {
+        'Metube': 'https://metube.regispailler.fr', // Utiliser l'adresse publique
       'IAphoto': 'https://iaphoto.regispailler.fr',
       'IAvideo': 'https://iavideo.regispailler.fr',
     };

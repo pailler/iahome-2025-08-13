@@ -21,8 +21,6 @@ interface Module {
   category: string;
   price: number;
   youtube_url?: string;
-  detail_title?: string;
-  detail_is_published?: boolean;
 }
 
 interface User {
@@ -149,11 +147,7 @@ export default function AdminPage() {
       }
 
       // Transformer les données des modules
-      const transformedModules = modulesData?.map(module => ({
-        ...module,
-        detail_title: '', // Pas de pages détaillées pour l'instant
-        detail_is_published: false
-      })) || [];
+      const transformedModules = modulesData || [];
 
       console.log('📊 Données chargées:', {
         articles: articlesData?.length || 0,
@@ -170,7 +164,7 @@ export default function AdminPage() {
         totalArticles: articlesData?.length || 0,
         publishedArticles: articlesData?.filter(a => a.is_published).length || 0,
         totalModules: transformedModules.length,
-        modulesWithDetails: 0, // Pas de pages détaillées pour l'instant
+        modulesWithDetails: 0,
         totalUsers: usersData?.length || 0,
         adminUsers: usersData?.filter(u => u.role === 'admin').length || 0,
         totalLinkedInPosts: linkedinPostsData?.length || 0,
@@ -431,7 +425,7 @@ export default function AdminPage() {
                       <span className="font-medium">Nouvel article</span>
                     </Link>
                     <Link
-                      href="/admin/cartes"
+                      href="/admin/modules"
                       className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                     >
                       <svg className="w-5 h-5 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -544,7 +538,7 @@ export default function AdminPage() {
                 <div className="flex items-center justify-between">
                   <h2 className="text-2xl font-bold text-gray-900">Modules</h2>
                   <Link
-                    href="/admin/cartes"
+                    href="/admin/modules"
                     className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                   >
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -562,7 +556,7 @@ export default function AdminPage() {
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Titre</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Catégorie</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prix</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Page détaillée</th>
+
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                       </thead>
@@ -581,25 +575,11 @@ export default function AdminPage() {
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               {module.price}€
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              {module.detail_title ? (
-                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                  module.detail_is_published 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : 'bg-yellow-100 text-yellow-800'
-                                }`}>
-                                  {module.detail_is_published ? 'Publiée' : 'Brouillon'}
-                                </span>
-                              ) : (
-                                <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
-                                  Aucune
-                                </span>
-                              )}
-                            </td>
+
                                                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                <div className="flex space-x-2">
                                  <Link
-                                   href={`/admin/cartes`}
+                                   href={`/admin/modules`}
                                    className="text-blue-600 hover:text-blue-900"
                                  >
                                    Gérer
