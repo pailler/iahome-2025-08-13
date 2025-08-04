@@ -310,12 +310,26 @@ async function addModuleAccess(userEmail: string, moduleId: string, sessionId: s
       return;
     }
 
+    // Récupérer le module pour obtenir son UUID
+    const { data: moduleData, error: moduleError } = await supabase
+      .from('modules')
+      .select('id')
+      .eq('id', moduleId)
+      .single();
+
+    if (moduleError || !moduleData) {
+      console.error('❌ Module non trouvé:', moduleId);
+      return;
+    }
+
+    console.log('✅ Module trouvé, UUID:', moduleData.id);
+
     // Vérifier si l'accès existe déjà
     const { data: existingAccess, error: checkError } = await supabase
       .from('module_access')
       .select('id')
       .eq('user_id', userData.user.id)
-      .eq('module_id', moduleId)
+      .eq('module_id', moduleData.id)
       .single();
 
     if (existingAccess) {
@@ -323,12 +337,12 @@ async function addModuleAccess(userEmail: string, moduleId: string, sessionId: s
       return;
     }
 
-    // Créer l'accès module
+    // Créer l'accès module avec l'UUID du module
     const { data: accessData, error: accessError } = await supabase
       .from('module_access')
       .insert({
         user_id: userData.user.id,
-        module_id: moduleId,
+        module_id: moduleData.id, // Utiliser l'UUID du module
         access_type: 'purchase',
         metadata: {
           session_id: sessionId,
