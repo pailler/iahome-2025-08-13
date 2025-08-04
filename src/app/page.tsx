@@ -1007,7 +1007,10 @@ export default function Home() {
                           )}
                         </Link>
                         {module.title !== 'Metube' && (
-                          <p className="text-sm text-gray-600 mb-4">{module.description}</p>
+                          <div 
+                            className="text-sm text-gray-600 mb-4"
+                            dangerouslySetInnerHTML={{ __html: module.description }}
+                          />
                         )}
                       </div>
 

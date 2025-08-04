@@ -154,7 +154,10 @@ export default function ModulesPage() {
                   <span className="text-2xl">{module.icon}</span>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">{module.name}</h3>
-                    <p className="text-sm text-gray-500">{module.description}</p>
+                    <div 
+                      className="text-sm text-gray-500"
+                      dangerouslySetInnerHTML={{ __html: module.description }}
+                    />
                   </div>
                 </div>
                 <div className={`px-2 py-1 rounded-full text-xs font-medium ${

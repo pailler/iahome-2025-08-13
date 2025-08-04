@@ -776,9 +776,10 @@ export default function CardDetailPage() {
             <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-4">
               {card.subtitle || card.title}
             </h2>
-            <p className="text-xl text-gray-600 max-w-4xl mx-auto">
-              {card.description}
-            </p>
+            <div 
+              className="text-xl text-gray-600 max-w-4xl mx-auto"
+              dangerouslySetInnerHTML={{ __html: card.description }}
+            />
           </div>
           
 

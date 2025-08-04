@@ -426,7 +426,10 @@ export default function AdminModulesPage() {
                     {module.subtitle && (
                       <p className="text-sm text-gray-600 mb-2 italic">{module.subtitle}</p>
                     )}
-                    <p className="text-sm text-gray-600 mb-4 line-clamp-3">{module.description}</p>
+                    <div 
+                      className="text-sm text-gray-600 mb-4 line-clamp-3"
+                      dangerouslySetInnerHTML={{ __html: module.description }}
+                    />
                     
                     <div className="space-y-2 mb-4">
                       <div className="text-sm text-gray-500">

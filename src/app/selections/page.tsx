@@ -169,7 +169,7 @@ export default function SelectionsPage() {
                   {modules.map((module, idx) => (
                     <li key={idx} className="border border-blue-100 rounded-lg p-4 flex flex-col gap-1 bg-blue-50">
                       <div className="font-semibold text-blue-900">{module.title || 'Module sans titre'}</div>
-                      {module.description && <div className="text-blue-900/80 text-sm">{module.description}</div>}
+                      {module.description && <div className="text-blue-900/80 text-sm" dangerouslySetInnerHTML={{ __html: module.description }} />}
                       {module.category && <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded w-fit mb-1">{module.category.toUpperCase().replace('BUILDING BLOCKS', 'IA ASSISTANT').replace('AI TOOLS', 'IA ASSISTANT').replace('MEDIA', 'IA ASSISTANT').replace('OUTILS', 'IA ASSISTANT').replace('TEMPLATES', 'IA ASSISTANT').replace('IA OUTILS', 'IA ASSISTANT').replace('MARKETING', 'IA MARKETING').replace('DESIGN', 'IA DESIGN')}</span>}
                       {module.price && <div className="text-blue-900 font-bold">Prix : {module.price} €</div>}
                       
@@ -277,7 +277,7 @@ export default function SelectionsPage() {
                 {modules.map((module, idx) => (
                   <li key={idx} className="border border-blue-100 rounded-lg p-4 flex flex-col gap-1 bg-blue-50">
                     <div className="font-semibold text-blue-900">{module.title || 'Module sans titre'}</div>
-                    {module.description && <div className="text-blue-900/80 text-sm">{module.description}</div>}
+                    {module.description && <div className="text-blue-900/80 text-sm" dangerouslySetInnerHTML={{ __html: module.description }} />}
                     {module.category && <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded w-fit mb-1">{module.category.toUpperCase().replace('BUILDING BLOCKS', 'IA ASSISTANT').replace('AI TOOLS', 'IA ASSISTANT').replace('MEDIA', 'IA ASSISTANT').replace('OUTILS', 'IA ASSISTANT').replace('TEMPLATES', 'IA ASSISTANT').replace('IA OUTILS', 'IA ASSISTANT').replace('MARKETING', 'IA MARKETING').replace('DESIGN', 'IA DESIGN')}</span>}
                     {module.price && <div className="text-blue-900 font-bold">Prix : {module.price} €</div>}
                     
