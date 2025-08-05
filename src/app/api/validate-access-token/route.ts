@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('🔍 Validation du token:', token);
+    console.log('🔍 Validation du token:', token.substring(0, 50) + '...');
 
     // Vérifier si c'est un token JWT valide
     try {
@@ -38,8 +38,32 @@ export async function POST(request: NextRequest) {
         .eq('is_active', true)
         .single();
 
-      if (dbError || !tokenRecord) {
+      if (dbError) {
+        console.log('❌ Erreur base de données:', dbError.message);
+        return NextResponse.json(
+          { error: 'Erreur base de données' },
+          { status: 500 }
+        );
+      }
+
+      if (!tokenRecord) {
         console.log('❌ Token non trouvé dans la base de données');
+        console.log('🔍 Recherche de tokens similaires...');
+        
+        // Rechercher des tokens similaires pour le débogage
+        const { data: similarTokens, error: similarError } = await supabase
+          .from('access_tokens')
+          .select('id, name, jwt_token, is_active')
+          .eq('is_active', true)
+          .limit(5);
+        
+        if (!similarError && similarTokens) {
+          console.log('📋 Tokens actifs trouvés:', similarTokens.length);
+          similarTokens.forEach((t, i) => {
+            console.log(`${i + 1}. ${t.name} - Token: ${t.jwt_token.substring(0, 30)}...`);
+          });
+        }
+        
         return NextResponse.json(
           { error: 'Token invalide' },
           { status: 401 }

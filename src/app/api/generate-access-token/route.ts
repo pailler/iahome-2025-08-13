@@ -61,6 +61,64 @@ export async function POST(request: NextRequest) {
     console.log('✅ Token JWT généré avec succès pour:', moduleName);
     console.log('🔍 Payload du token:', payload);
 
+    // Récupérer les informations du module
+    const { data: moduleData, error: moduleError } = await supabase
+      .from('modules')
+      .select('title, category, price')
+      .eq('id', moduleId)
+      .single();
+
+    if (moduleError) {
+      console.error('❌ Erreur récupération module:', moduleError);
+      return NextResponse.json(
+        { error: 'Module non trouvé' },
+        { status: 404 }
+      );
+    }
+
+    // Stocker le token dans la base de données
+    const tokenId = `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const tokenData = {
+      id: tokenId,
+      name: `Token ${moduleData.title} - ${user.email}`,
+      description: `Token d'accès pour ${moduleData.title} généré automatiquement`,
+      module_id: moduleId,
+      module_name: moduleData.title,
+      access_level: 'premium',
+      permissions: payload.permissions,
+      max_usage: 100,
+      current_usage: 0,
+      is_active: true,
+      created_by: user.id,
+      expires_at: new Date(Date.now() + (hours * 60 * 60 * 1000)).toISOString(),
+      jwt_token: accessToken
+    };
+
+    console.log('💾 Stockage du token dans la base de données...');
+    console.log('📋 Données du token:', tokenData);
+    
+    const { data: storedToken, error: storeError } = await supabase
+      .from('access_tokens')
+      .insert([tokenData])
+      .select()
+      .single();
+
+    if (storeError) {
+      console.error('❌ Erreur stockage token:', storeError);
+      console.error('📋 Détails de l\'erreur:', {
+        message: storeError.message,
+        details: storeError.details,
+        hint: storeError.hint,
+        code: storeError.code
+      });
+      return NextResponse.json(
+        { error: `Erreur lors du stockage du token: ${storeError.message}` },
+        { status: 500 }
+      );
+    }
+
+    console.log('✅ Token stocké avec succès dans la base de données');
+
     return NextResponse.json({
       success: true,
       accessToken,
@@ -68,7 +126,8 @@ export async function POST(request: NextRequest) {
       moduleName,
       permissions: payload.permissions,
       userEmail: user.email,
-      issuedAt: new Date().toISOString()
+      issuedAt: new Date().toISOString(),
+      token: storedToken
     });
 
   } catch (error) {

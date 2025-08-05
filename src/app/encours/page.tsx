@@ -14,6 +14,7 @@ export default function EncoursPage() {
   const [loading, setLoading] = useState(true);
   const [sessionChecked, setSessionChecked] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [iframeModal, setIframeModal] = useState<{isOpen: boolean, url: string, title: string}>({
     isOpen: false,
     url: '',
@@ -244,31 +245,82 @@ export default function EncoursPage() {
     }
 
     try {
-      console.log('🔍 Génération du token JWT pour:', moduleTitle);
+      console.log('🔍 Recherche d\'un token existant pour:', moduleTitle);
       
-      // Définir la durée d'expiration spécifique pour certains modules
-      const expirationHours = moduleTitle.toLowerCase() === 'ruinedfooocus' ? 12 : undefined;
-      
-      const response = await fetch('https://home.regispailler.fr/api/generate-access-token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`
-        },
-        body: JSON.stringify({
-          moduleId: moduleId,
-          moduleName: moduleTitle.toLowerCase().replace(/\s+/g, ''),
-          expirationHours: expirationHours
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Erreur HTTP ${response.status}`);
+      // 1. D'abord, chercher un token existant et valide
+      const { data: existingToken, error: tokenError } = await supabase
+        .from('access_tokens')
+        .select(`
+          id,
+          name,
+          jwt_token,
+          current_usage,
+          max_usage,
+          expires_at,
+          is_active
+        `)
+        .eq('module_id', moduleId)
+        .eq('created_by', user.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      let accessToken;
+      let shouldIncrementUsage = false;
+
+      if (!tokenError && existingToken) {
+        // Vérifier si le token n'est pas expiré
+        if (new Date(existingToken.expires_at) > new Date()) {
+          console.log('✅ Token existant trouvé et valide');
+          accessToken = existingToken.jwt_token;
+          shouldIncrementUsage = true;
+          
+          // Incrémenter l'usage du token existant
+          await supabase
+            .from('access_tokens')
+            .update({
+              current_usage: existingToken.current_usage + 1,
+              last_used_at: new Date().toISOString()
+            })
+            .eq('id', existingToken.id);
+          
+          console.log(`✅ Usage incrémenté: ${existingToken.current_usage + 1}/${existingToken.max_usage}`);
+        } else {
+          console.log('⚠️ Token existant expiré, génération d\'un nouveau token');
+        }
+      }
+
+      // 2. Si pas de token valide, en générer un nouveau
+      if (!accessToken) {
+        console.log('🔄 Génération d\'un nouveau token JWT pour:', moduleTitle);
+        
+        // Définir la durée d'expiration spécifique pour certains modules
+        const expirationHours = moduleTitle.toLowerCase() === 'ruinedfooocus' ? 12 : undefined;
+        
+        const response = await fetch('https://home.regispailler.fr/api/generate-access-token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`
+          },
+          body: JSON.stringify({
+            moduleId: moduleId,
+            moduleName: moduleTitle.toLowerCase().replace(/\s+/g, ''),
+            expirationHours: expirationHours
+          }),
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `Erreur HTTP ${response.status}`);
+        }
+        
+        const { accessToken: newToken, moduleName } = await response.json();
+        accessToken = newToken;
+        console.log('✅ Nouveau token JWT généré avec succès');
       }
       
-      const { accessToken, moduleName } = await response.json();
-      console.log('✅ Token JWT généré avec succès');
       console.log('🔍 Token (premiers caractères):', accessToken.substring(0, 50) + '...');
       
       const moduleUrls: { [key: string]: string } = {
@@ -285,6 +337,8 @@ export default function EncoursPage() {
         'invoke': 'https://invoke.regispailler.fr'
       };
       
+      // Déterminer le nom du module pour l'URL
+      const moduleName = moduleTitle.toLowerCase().replace(/\s+/g, '');
       const baseUrl = moduleUrls[moduleName] || 'https://stablediffusion.regispailler.fr';
       const accessUrl = `${baseUrl}?token=${accessToken}`;
       console.log('🔗 URL d\'accès:', accessUrl);
@@ -295,9 +349,73 @@ export default function EncoursPage() {
         url: accessUrl,
         title: moduleTitle
       });
+      
+      // Rafraîchir les données des tokens après l'accès
+      setTimeout(() => {
+        refreshTokenData();
+      }, 2000); // Attendre 2 secondes pour laisser le temps à l'API de traiter
     } catch (error) {
       console.error('❌ Erreur lors de l\'accès:', error);
       alert(`Erreur lors de l'accès: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+    }
+  };
+
+  // Fonction pour rafraîchir les données des tokens
+  const refreshTokenData = async () => {
+    if (!user?.id) return;
+    
+    try {
+      setRefreshing(true);
+      console.log('🔄 Rafraîchissement des données des tokens...');
+      
+      // Mettre à jour les données des tokens pour chaque module
+      const updatedSubscriptions = await Promise.all(
+        activeSubscriptions.map(async (access) => {
+          try {
+            // Récupérer les informations mises à jour du token
+            const { data: tokenData, error: tokenError } = await supabase
+              .from('access_tokens')
+              .select(`
+                id,
+                name,
+                max_usage,
+                current_usage,
+                expires_at,
+                last_used_at,
+                is_active
+              `)
+              .eq('module_id', access.module_id)
+              .eq('created_by', user.id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single();
+
+            if (!tokenError && tokenData) {
+              console.log(`✅ Token mis à jour pour ${access.modules.title}:`, tokenData);
+              return {
+                ...access,
+                token: tokenData
+              };
+            } else {
+              console.log(`ℹ️ Aucun token trouvé pour ${access.modules.title}`);
+              return {
+                ...access,
+                token: null
+              };
+            }
+          } catch (error) {
+            console.error(`❌ Erreur mise à jour token pour ${access.modules.title}:`, error);
+            return access;
+          }
+        })
+      );
+
+      setActiveSubscriptions(updatedSubscriptions);
+      console.log('✅ Données des tokens rafraîchies');
+    } catch (error) {
+      console.error('❌ Erreur rafraîchissement tokens:', error);
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -518,9 +636,26 @@ export default function EncoursPage() {
         ) : (
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                📊 Résumé de vos sélections
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  📊 Résumé de vos sélections
+                </h2>
+                <button
+                  onClick={refreshTokenData}
+                  disabled={refreshing}
+                  className={`px-3 py-1 rounded-lg transition-colors duration-200 flex items-center space-x-2 text-sm ${
+                    refreshing 
+                      ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
+                  title="Rafraîchir les données des tokens"
+                >
+                  <svg className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span>{refreshing ? 'Actualisation...' : 'Actualiser'}</span>
+                </button>
+              </div>
               
               {/* Alerte pour les modules expirés */}
               {activeSubscriptions.filter(access => {
