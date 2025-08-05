@@ -121,32 +121,49 @@ export default function Home() {
         console.log('Test de connexion:', { testData, testError });
         
         console.log('Tentative de chargement des modules depuis Supabase...');
-        const { data, error } = await supabase
+        
+        // Récupérer les modules avec leurs catégories multiples
+        const { data: modulesData, error: modulesError } = await supabase
           .from('modules')
-          .select('*');
+          .select(`
+            *,
+            module_categories (
+              category
+            )
+          `);
         
-        console.log('Réponse Supabase complète:', { data, error });
+        console.log('Réponse Supabase complète:', { modulesData, modulesError });
         
-        if (error) {
+        if (modulesError) {
           console.error('=== ERREUR DÉTAILLÉE ===');
-          console.error('Erreur lors du chargement des modules:', error);
-          console.error('Code d\'erreur:', error.code);
-          console.error('Message d\'erreur:', error.message);
-          console.error('Détails:', error.details);
-          console.error('Hint:', error.hint);
+          console.error('Erreur lors du chargement des modules:', modulesError);
+          console.error('Code d\'erreur:', modulesError.code);
+          console.error('Message d\'erreur:', modulesError.message);
+          console.error('Détails:', modulesError.details);
+          console.error('Hint:', modulesError.hint);
         } else {
-          console.log('Modules chargés avec succès:', data);
+          console.log('Modules chargés avec succès:', modulesData);
           
-          // Ajouter des rôles et données aléatoires aux modules pour l'affichage
-          const modulesWithRoles = (data || []).map(module => ({
-            ...module,
-            // Nettoyer et utiliser la catégorie de la base de données
-            category: cleanCategory(module.category || 'Non classé'),
-            // Ajouter des données aléatoires seulement pour l'affichage (pas stockées en DB)
-            role: getRandomRole(),
-            usage_count: Math.floor(Math.random() * 1000) + 1,
-            experience_level: getRandomExperienceLevel()
-          }));
+          // Traiter les modules avec leurs catégories multiples
+          const modulesWithRoles = (modulesData || []).map(module => {
+            // Extraire les catégories depuis la relation module_categories
+            const categories = module.module_categories?.map((mc: any) => mc.category) || [];
+            
+            // Garder la catégorie principale pour la compatibilité
+            const primaryCategory = module.category || categories[0] || 'Non classé';
+            
+            return {
+              ...module,
+              // Catégorie principale (pour compatibilité)
+              category: cleanCategory(primaryCategory),
+              // Nouvelles catégories multiples
+              categories: categories.map(cleanCategory),
+              // Ajouter des données aléatoires seulement pour l'affichage (pas stockées en DB)
+              role: getRandomRole(),
+              usage_count: Math.floor(Math.random() * 1000) + 1,
+              experience_level: getRandomExperienceLevel()
+            };
+          });
           
           setModules(modulesWithRoles);
         }
@@ -282,47 +299,58 @@ export default function Home() {
     return `/secure-module-access?module=${moduleName.toLowerCase()}`;
   };
 
-  // Obtenir toutes les catégories uniques depuis les modules
-  const existingCategories = Array.from(new Set(modules.map(module => module.category).filter(Boolean)));
-  
-  // Définir les catégories autorisées
-  const authorizedCategories = ['IA ASSISTANT', 'IA BUREAUTIQUE', 'IA PHOTO', 'IA VIDEO', 'IA MAO', 'IA PROMPTS', 'IA MARKETING', 'IA DESIGN'];
-  
-  // Filtrer les catégories existantes pour ne garder que les autorisées
+  // Générer la liste des catégories disponibles
+  const existingCategories = Array.from(new Set(
+    modules.flatMap(module => module.categories || [module.category]).filter(Boolean)
+  ));
+
+  // Catégories autorisées (mise à jour avec les nouvelles catégories)
+  const authorizedCategories = [
+    'IA ASSISTANT', 
+    'IA BUREAUTIQUE', 
+    'IA PHOTO', 
+    'IA VIDEO', 
+    'IA MAO', 
+    'IA PROMPTS', 
+    'IA MARKETING', 
+    'IA DESIGN', 
+    'Web Tools', 
+    'IA FORMATION', 
+    'IA DEVELOPPEMENT',
+    'BUILDING BLOCKS'
+  ];
+
+  // Filtrer et combiner les catégories
   const filteredExistingCategories = existingCategories.filter(cat => authorizedCategories.includes(cat));
-  
-  // Ajouter les catégories autorisées qui n'existent pas encore
-  const allCategories = [...filteredExistingCategories, ...authorizedCategories.filter(cat => !filteredExistingCategories.includes(cat))];
-  
+  const missingCategories = authorizedCategories.filter(cat => !filteredExistingCategories.includes(cat));
+  const allCategories = [...filteredExistingCategories, ...missingCategories];
+
+  // Ajouter "Toutes les catégories" au début
   const categories = ['Toutes les catégories', ...allCategories];
 
   // Filtrer et trier les modules
   const filteredAndSortedModules = modules
     .filter(module => {
-      // Exclure Stable Diffusion de la page d'accueil
-      if (module.title.toLowerCase().includes('stablediffusion') || module.title.toLowerCase().includes('sdnext')) {
-        return false;
-      }
+      // Filtre de recherche
+      const matchesSearch = !search || 
+        module.title.toLowerCase().includes(search.toLowerCase()) ||
+        module.description?.toLowerCase().includes(search.toLowerCase()) ||
+        (module.categories || [module.category]).some(cat => 
+          cat.toLowerCase().includes(search.toLowerCase())
+        );
 
-      const q = search.toLowerCase();
-      const matchesSearch = (
-        module.title.toLowerCase().includes(q) ||
-        module.description.toLowerCase().includes(q) ||
-        module.category.toLowerCase().includes(q)
-      );
-
-      // Filtre par prix
+      // Filtre de prix
       const matchesPrice = priceFilter === 'all' || 
-                        (priceFilter === 'free' && module.price === '0') ||
-                  (priceFilter === 'paid' && module.price !== '0');
+        (priceFilter === 'free' && module.price === '0') ||
+        (priceFilter === 'paid' && module.price !== '0');
 
-      // Filtre par niveau d'expérience
+      // Filtre d'expérience
       const matchesExperience = experienceFilter === 'all' || 
         module.experience_level === experienceFilter;
 
-      // Filtre par catégorie
+      // Filtre de catégorie
       const matchesCategory = categoryFilter === 'all' || 
-        module.category === categoryFilter;
+        (module.categories || [module.category]).includes(categoryFilter);
 
       return matchesSearch && matchesPrice && matchesExperience && matchesCategory;
     })
@@ -841,9 +869,9 @@ export default function Home() {
               <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight mb-4">
                 Accès direct à la puissance et aux outils IA
               </h1>
-              <p className="text-xl text-blue-100 mb-6">
-                L'essentiel des outils IA réunis pour une utilisation simple et directe.
-              </p>
+                              <p className="text-xl text-blue-100 mb-6">
+                  L'essentiel de l'IA réuni pour une utilisation simple et directe.
+                </p>
               
               {/* Barre de recherche */}
               <div className="relative max-w-lg">
@@ -982,9 +1010,17 @@ export default function Home() {
                       {/* En-tête du module */}
                       <div className="p-6 pb-4">
                         <div className="flex items-start justify-between mb-3">
-                          <span className="inline-block px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded">
-                            {toUpperCase(cleanCategory(module.category))}
-                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {/* Afficher toutes les catégories du module */}
+                            {(module.categories || [module.category]).map((cat, index) => (
+                              <span 
+                                key={index}
+                                className="inline-block px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded"
+                              >
+                                {toUpperCase(cleanCategory(cat))}
+                              </span>
+                            ))}
+                          </div>
                           {session && role === 'admin' && (
                             <div className="flex gap-1">
                               <button 

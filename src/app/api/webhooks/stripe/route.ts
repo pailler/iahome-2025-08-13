@@ -96,6 +96,53 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   
   if (customerEmail && itemsIds.length > 0) {
     console.log('🔍 Debug - Envoi email de confirmation à:', customerEmail);
+    
+    // Récupérer l'utilisateur par email
+    const { data: user, error: userError } = await supabase
+      .from('profiles')
+      .select('id, email')
+      .eq('email', customerEmail)
+      .single();
+
+    if (userError || !user) {
+      console.error('❌ Utilisateur non trouvé pour:', customerEmail);
+      return;
+    }
+
+    // Générer automatiquement un token pour chaque module acheté
+    for (const moduleId of itemsIds) {
+      try {
+        console.log('🔑 Génération automatique du token pour le module:', moduleId);
+        
+        const tokenResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/generate-module-token`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            moduleId: moduleId,
+            userId: user.id,
+            paymentId: session.id,
+            accessLevel: 'premium',
+            expirationHours: 72, // 3 jours par défaut
+            maxUsage: 100
+          })
+        });
+
+        if (tokenResponse.ok) {
+          const tokenData = await tokenResponse.json();
+          console.log('✅ Token généré avec succès:', tokenData.token.id);
+          
+          // Envoyer un email avec le token
+          await sendTokenEmail(customerEmail, tokenData.token);
+        } else {
+          console.error('❌ Erreur génération token:', await tokenResponse.text());
+        }
+      } catch (error) {
+        console.error('❌ Erreur lors de la génération du token pour le module', moduleId, ':', error);
+      }
+    }
+    
     // Créer un objet items pour l'email
     const items = itemsIds.map((id: string) => ({ id, module_id: id }));
     await sendPaymentConfirmationEmail(customerEmail, session, items, amount);
@@ -210,6 +257,40 @@ async function sendSubscriptionConfirmationEmail(email: string, invoice: Stripe.
   } catch (error) {
     console.error('❌ Erreur lors de l\'envoi de l\'email d\'abonnement:', error);
     return false;
+  }
+}
+
+async function sendTokenEmail(email: string, token: any) {
+  try {
+    console.log('🔍 Debug - Envoi d\'email avec token à:', email);
+    
+    const subject = 'Votre token d\'accès - IAHome';
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2563eb;">Token d'accès généré</h2>
+        <p>Votre token d'accès a été généré avec succès après votre paiement.</p>
+        
+        <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin-top: 0;">Détails du token</h3>
+          <p><strong>Nom:</strong> ${token.name}</p>
+          <p><strong>Expire le:</strong> ${new Date(token.expiresAt).toLocaleDateString()}</p>
+          <p><strong>URL d'accès:</strong> <a href="${token.accessUrl}" style="color: #2563eb;">Accéder au module</a></p>
+        </div>
+        
+        <div style="background-color: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0;">
+          <h4 style="margin-top: 0; color: #92400e;">Important</h4>
+          <p>Conservez ce token en sécurité. Il vous permet d'accéder au module acheté.</p>
+          <p>Le token expire automatiquement après la date indiquée.</p>
+        </div>
+        
+        <p>Merci de votre confiance !</p>
+      </div>
+    `;
+    
+    await emailService.sendEmail(email, subject, htmlContent);
+    console.log('✅ Email avec token envoyé à:', email);
+  } catch (error) {
+    console.error('❌ Erreur envoi email avec token:', error);
   }
 }
 

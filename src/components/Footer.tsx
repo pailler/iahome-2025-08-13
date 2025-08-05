@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import DynamicNavigation from './DynamicNavigation';
 
 export default function Footer() {
   return (
@@ -37,28 +38,11 @@ export default function Footer() {
           {/* Section Produits */}
           <div>
             <h3 className="text-lg font-semibold mb-4">Produits</h3>
-            <ul className="space-y-2">
-              <li>
-                <Link href="/modules" className="text-gray-300 hover:text-white transition-colors">
-                  Modules IA
-                </Link>
-              </li>
-              <li>
-                <Link href="/selections" className="text-gray-300 hover:text-white transition-colors">
-                  Sélections
-                </Link>
-              </li>
-              <li>
-                <Link href="/encours" className="text-gray-300 hover:text-white transition-colors">
-                  Mes Applications
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog" className="text-gray-300 hover:text-white transition-colors">
-                  Blog
-                </Link>
-              </li>
-            </ul>
+            <DynamicNavigation 
+              menuName="footer" 
+              className="space-y-2"
+              isMobile={false}
+            />
           </div>
 
           {/* Section Ressources */}

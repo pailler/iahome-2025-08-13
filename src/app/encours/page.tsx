@@ -99,10 +99,11 @@ export default function EncoursPage() {
           return;
         }
 
-        // Ensuite, récupérer les détails des modules pour chaque accès
+        // Ensuite, récupérer les détails des modules et les tokens pour chaque accès
         const modulesWithDetails = [];
         for (const access of accessData || []) {
           try {
+            // Récupérer les détails du module
             const { data: moduleData, error: moduleError } = await supabase
               .from('modules')
               .select('id, title, description, category, price')
@@ -120,15 +121,47 @@ export default function EncoursPage() {
                   description: 'Ce module n\'existe plus dans la base de données',
                   category: 'INCONNU',
                   price: '0'
-                }
+                },
+                token: null
               });
               continue;
+            }
+
+            // Récupérer les informations du token d'accès pour ce module
+            let tokenInfo = null;
+            try {
+              const { data: tokenData, error: tokenError } = await supabase
+                .from('access_tokens')
+                .select(`
+                  id,
+                  name,
+                  max_usage,
+                  current_usage,
+                  expires_at,
+                  last_used_at,
+                  is_active
+                `)
+                .eq('module_id', access.module_id)
+                .eq('created_by', user.id)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+
+              if (!tokenError && tokenData) {
+                tokenInfo = tokenData;
+                console.log(`✅ Token trouvé pour ${moduleData.title}:`, tokenInfo);
+              } else {
+                console.log(`ℹ️ Aucun token trouvé pour ${moduleData.title}`);
+              }
+            } catch (tokenError) {
+              console.log(`ℹ️ Erreur lors de la récupération du token pour ${moduleData.title}:`, tokenError);
             }
 
             if (moduleData) {
               modulesWithDetails.push({
                 ...access,
-                modules: moduleData
+                modules: moduleData,
+                token: tokenInfo
               });
             }
           } catch (error) {
@@ -142,16 +175,17 @@ export default function EncoursPage() {
                 description: 'Ce module n\'existe plus dans la base de données',
                 category: 'INCONNU',
                 price: '0'
-              }
+              },
+              token: null
             });
           }
         }
 
         setActiveSubscriptions(modulesWithDetails);
         setError(null);
-        console.log('✅ Sélections actives chargées:', modulesWithDetails);
+        console.log('✅ Sélections actives chargées avec tokens:', modulesWithDetails);
       } catch (error) {
-                  console.error('❌ Erreur exception chargement sélections:', error);
+        console.error('❌ Erreur exception chargement sélections:', error);
       } finally {
         setLoading(false);
       }
@@ -176,7 +210,7 @@ export default function EncoursPage() {
     if (!session?.user?.id) return null;
     
     try {
-      const response = await fetch('/api/generate-magic-link', {
+      const response = await fetch('https://home.regispailler.fr/api/generate-magic-link', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -215,7 +249,7 @@ export default function EncoursPage() {
       // Définir la durée d'expiration spécifique pour certains modules
       const expirationHours = moduleTitle.toLowerCase() === 'ruinedfooocus' ? 12 : undefined;
       
-      const response = await fetch('/api/generate-access-token', {
+      const response = await fetch('https://home.regispailler.fr/api/generate-access-token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -332,12 +366,27 @@ export default function EncoursPage() {
     }
   };
 
+  // Fonction pour obtenir la couleur selon le pourcentage d'utilisation
+  const getUsageColor = (current: number, max: number) => {
+    const percentage = (current / max) * 100;
+    
+    if (percentage >= 90) {
+      return 'bg-red-100 text-red-700';
+    } else if (percentage >= 75) {
+      return 'bg-orange-100 text-orange-700';
+    } else if (percentage >= 50) {
+      return 'bg-yellow-100 text-yellow-700';
+    } else {
+      return 'bg-green-100 text-green-700';
+    }
+  };
+
   // Fonction pour vérifier l'accès à un module
   const checkModuleAccess = async (moduleName: string) => {
     if (!session?.user?.id) return { canAccess: false, reason: 'Utilisateur non connecté' };
     
     try {
-      const response = await fetch('/api/check-session-access', {
+      const response = await fetch('https://home.regispailler.fr/api/check-session-access', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -631,6 +680,60 @@ export default function EncoursPage() {
                               {formatTimeRemaining(access.expires_at)}
                             </span>
                           </div>
+                        )}
+
+                        {/* Informations du token d'accès */}
+                        {access.token && (
+                          <>
+                            <div className="text-sm text-gray-600">
+                              <span className="font-medium">Token :</span> 
+                              <span className={`ml-1 px-2 py-1 rounded text-xs font-medium ${
+                                access.token.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                              }`}>
+                                {access.token.is_active ? 'Actif' : 'Inactif'}
+                              </span>
+                            </div>
+                            
+                            {access.token.max_usage && (
+                              <div className="text-sm text-gray-600">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="font-medium">Utilisations :</span> 
+                                  <span className={`px-2 py-1 rounded text-xs font-medium ${getUsageColor(access.token.current_usage || 0, access.token.max_usage)}`}>
+                                    {access.token.current_usage || 0} / {access.token.max_usage}
+                                  </span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                  <div 
+                                    className={`h-2 rounded-full transition-all duration-300 ${
+                                      getUsageColor(access.token.current_usage || 0, access.token.max_usage).includes('red') ? 'bg-red-500' :
+                                      getUsageColor(access.token.current_usage || 0, access.token.max_usage).includes('orange') ? 'bg-orange-500' :
+                                      getUsageColor(access.token.current_usage || 0, access.token.max_usage).includes('yellow') ? 'bg-yellow-500' :
+                                      'bg-green-500'
+                                    }`}
+                                    style={{ width: `${Math.min(((access.token.current_usage || 0) / access.token.max_usage) * 100, 100)}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {access.token.expires_at && (
+                              <div className="text-sm text-gray-600">
+                                <span className="font-medium">Expire le :</span> 
+                                <span className={`ml-1 px-2 py-1 rounded text-xs font-medium ${getTimeRemainingColor(access.token.expires_at)}`}>
+                                  {formatDate(access.token.expires_at)}
+                                </span>
+                              </div>
+                            )}
+                            
+                            {access.token.last_used_at && (
+                              <div className="text-sm text-gray-600">
+                                <span className="font-medium">Dernière utilisation :</span> 
+                                <span className="ml-1 text-xs text-gray-500">
+                                  {formatDate(access.token.last_used_at)}
+                                </span>
+                              </div>
+                            )}
+                          </>
                         )}
 
                         <div className="text-sm text-gray-600">

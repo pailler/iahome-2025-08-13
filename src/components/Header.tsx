@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../utils/supabaseClient';
+import DynamicNavigation from './DynamicNavigation';
 
 export default function Header() {
   const router = useRouter();
@@ -107,11 +108,12 @@ export default function Header() {
               <span className="text-xl font-bold text-blue-900">IAhome</span>
             </Link>
             
-            {/* Menu de navigation */}
-            <nav className="hidden md:flex items-center space-x-6">
-              <Link href="/community" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">Communauté</Link>
-              <Link href="/blog" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">Blog</Link>
-            </nav>
+            {/* Menu de navigation dynamique */}
+            <DynamicNavigation 
+              menuName="main" 
+              userRole={role}
+              className="hidden md:flex items-center space-x-6"
+            />
           </div>
           
           {/* Boutons à droite */}
