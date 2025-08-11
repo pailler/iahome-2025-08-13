@@ -14,7 +14,7 @@ const MODULES_CONFIG: Record<string, {
   },
 
   iametube: {
-    url: 'https://iametube.regispailler.fr',
+    url: '/api/proxy-metube',
     credentials: { username: 'admin', password: 'Rasulova75' },
     type: 'http-basic'
   }

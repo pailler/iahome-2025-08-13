@@ -16,7 +16,7 @@ const MODULE_URLS: { [key: string]: string } = {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
     const { searchParams } = new URL(request.url);
@@ -68,8 +68,9 @@ export async function GET(
 
     // Construire le chemin complet
     let fullUrl = targetUrl;
-    if (params.path && params.path.length > 0) {
-      const path = params.path.join('/');
+    const resolvedParams = await params;
+    if (resolvedParams.path && resolvedParams.path.length > 0) {
+      const path = resolvedParams.path.join('/');
       fullUrl = `${targetUrl}/${path}`;
     }
     

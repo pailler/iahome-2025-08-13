@@ -46,11 +46,11 @@ export default function SetupAdminPage() {
       }
     } catch (error) {
       console.error('Erreur lors de la vérification des admins:', error);
-      setMessage('Erreur générale: ' + error.message);
+      setMessage('Erreur générale: ' + (error instanceof Error ? error.message : 'Erreur inconnue'));
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setMessage('');
     setIsLoading(true);
@@ -116,7 +116,7 @@ export default function SetupAdminPage() {
         }, 3000);
       }
     } catch (error) {
-      setMessage('Erreur lors de la création du compte: ' + error.message);
+      setMessage('Erreur lors de la création du compte: ' + (error instanceof Error ? error.message : 'Erreur inconnue'));
     } finally {
       setIsLoading(false);
     }

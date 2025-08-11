@@ -12,7 +12,7 @@ interface Card {
   description: string;
   subtitle?: string;
   category: string;
-  price: number;
+  price: number | string;
   youtube_url?: string;
   image_url?: string;
   features?: string[];
@@ -35,13 +35,16 @@ export default function CardDetailPage() {
   const [user, setUser] = useState<any>(null);
   const [selectedCards, setSelectedCards] = useState<any[]>([]);
   const [userSubscriptions, setUserSubscriptions] = useState<{[key: string]: any}>({});
+  const [isSelected, setIsSelected] = useState(false);
+  const [isActivating, setIsActivating] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [iframeModal, setIframeModal] = useState<{isOpen: boolean, url: string, title: string}>({
     isOpen: false,
     url: '',
     title: ''
   });
 
-  // Fonction pour accéder aux modules avec JWT (comme dans la page /encours)
+  // Fonction pour accéder aux modules avec JWT
   const accessModuleWithJWT = async (moduleTitle: string, moduleId: string) => {
     if (!session) {
       alert('Vous devez être connecté pour accéder à ce module');
@@ -49,9 +52,93 @@ export default function CardDetailPage() {
     }
 
     try {
+      // Gestion spéciale pour RuinedFooocus avec tokens Gradio
+      if (moduleTitle.toLowerCase() === 'ruinedfooocus') {
+        console.log('🔑 Génération du token Gradio pour RuinedFooocus');
+        
+        const response = await fetch('/api/generate-gradio-token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`
+          },
+          body: JSON.stringify({
+            moduleId: moduleId,
+            moduleTitle: moduleTitle
+          }),
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `Erreur HTTP ${response.status}`);
+        }
+        
+        const { token: gradioToken, expiresAt } = await response.json();
+        console.log('✅ Token Gradio généré avec succès');
+        
+        // Construire l'URL sécurisée avec le token
+        const secureUrl = `/api/gradio-secure?token=${gradioToken}`;
+        console.log('🔗 URL d\'accès Gradio sécurisée:', secureUrl);
+        
+        setIframeModal({
+          isOpen: true,
+          url: secureUrl,
+          title: moduleTitle
+        });
+        return;
+      }
+
+      // Gestion spéciale pour les adresses locales
+      if (moduleTitle.toLowerCase().includes('local') || moduleTitle.toLowerCase().includes('192.168')) {
+        console.log('🔑 Génération du token local pour:', moduleTitle);
+        
+        // Déterminer l'URL locale basée sur le titre du module
+        let targetUrl = 'http://192.168.1.150:7870'; // URL par défaut
+        
+        if (moduleTitle.toLowerCase().includes('192.168.1.150')) {
+          targetUrl = 'http://192.168.1.150:7870';
+        } else if (moduleTitle.toLowerCase().includes('192.168.1.100')) {
+          targetUrl = 'http://192.168.1.100:8080';
+        } else if (moduleTitle.toLowerCase().includes('192.168.1.200')) {
+          targetUrl = 'http://192.168.1.200:3000';
+        }
+        
+        const response = await fetch('/api/generate-local-token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`
+          },
+          body: JSON.stringify({
+            targetUrl: targetUrl,
+            moduleTitle: moduleTitle,
+            moduleId: moduleId
+          }),
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `Erreur HTTP ${response.status}`);
+        }
+        
+        const { token: localToken, expiresAt } = await response.json();
+        console.log('✅ Token local généré avec succès');
+        
+        // Construire l'URL sécurisée avec le token
+        const secureUrl = `/api/local-proxy?token=${localToken}`;
+        console.log('🔗 URL d\'accès local sécurisée:', secureUrl);
+        
+        setIframeModal({
+          isOpen: true,
+          url: secureUrl,
+          title: moduleTitle
+        });
+        return;
+      }
+
+      // Pour les autres modules, utiliser le système JWT existant
       console.log('🔍 Génération du token JWT pour:', moduleTitle);
       
-      // Définir la durée d'expiration spécifique pour certains modules
       const expirationHours = moduleTitle.toLowerCase() === 'ruinedfooocus' ? 12 : undefined;
       
       const response = await fetch('/api/generate-access-token', {
@@ -74,27 +161,42 @@ export default function CardDetailPage() {
       
       const { accessToken, moduleName } = await response.json();
       console.log('✅ Token JWT généré avec succès');
-      console.log('🔍 Token (premiers caractères):', accessToken.substring(0, 50) + '...');
       
       const moduleUrls: { [key: string]: string } = {
         'stablediffusion': 'https://stablediffusion.regispailler.fr',
         'iaphoto': 'https://iaphoto.regispailler.fr', 
-        'iametube': 'https://metube.regispailler.fr',
+        'metube': '/api/proxy-metube',
+        'ia metube': '/api/proxy-metube',
         'chatgpt': 'https://chatgpt.regispailler.fr',
-        'librespeed': 'https://librespeed.regispailler.fr',
+        'librespeed': '/api/proxy-librespeed',
         'psitransfer': 'https://psitransfer.regispailler.fr',
         'pdf+': 'https://pdfplus.regispailler.fr',
         'aiassistant': 'https://aiassistant.regispailler.fr',
         'cogstudio': 'https://cogstudio.regispailler.fr',
-        'ruinedfooocus': 'https://ruinedfooocus.regispailler.fr',
+        'ruinedfooocus': '/api/gradio-secure',
         'invoke': 'https://invoke.regispailler.fr'
       };
-      
-      const baseUrl = moduleUrls[moduleName] || 'https://stablediffusion.regispailler.fr';
-      const accessUrl = `${baseUrl}?token=${accessToken}`;
+      // Normaliser le nom de module pour l'indexation
+      const normalizedName = (moduleName || '').toLowerCase().replace(/\s+/g, '');
+      let baseUrl = moduleUrls[normalizedName];
+      if (!baseUrl) {
+        // Essayer à partir du titre de la carte si présent
+        const titleKey = (moduleTitle || '').toLowerCase().replace(/\s+/g, '');
+        baseUrl = moduleUrls[titleKey];
+      }
+      // Dernier recours: si c'est Librespeed, forcer le proxy local
+      if (!baseUrl && ((moduleName || '').toLowerCase().includes('librespeed') || (moduleTitle || '').toLowerCase().includes('librespeed'))) {
+        baseUrl = '/api/proxy-librespeed';
+      }
+      // Fallback par défaut si rien trouvé
+      if (!baseUrl) {
+        baseUrl = '/api/proxy-metube';
+      }
+      // Pour les modules proxy internes, ne pas ajouter le token dans l'URL
+      const isProxyModule = baseUrl.startsWith('/api/');
+      const accessUrl = isProxyModule ? baseUrl : `${baseUrl}?token=${accessToken}`;
       console.log('🔗 URL d\'accès:', accessUrl);
       
-      // Ouvrir dans une iframe au lieu d'un nouvel onglet
       setIframeModal({
         isOpen: true,
         url: accessUrl,
@@ -181,7 +283,7 @@ export default function CardDetailPage() {
     fetchUserSubscriptions();
   }, [session?.user?.id]);
 
-          // Charger les modules sélectionnés depuis le localStorage
+  // Charger les modules sélectionnés depuis le localStorage
   useEffect(() => {
     const saved = localStorage.getItem('selectedCards');
     if (saved) {
@@ -213,6 +315,8 @@ export default function CardDetailPage() {
 
         if (data) {
           setCard(data);
+          // Debug info
+          console.log('🔍 Debug card:', data.title, 'price:', data.price, 'price type:', typeof data.price, 'session:', !!session);
         }
       } catch (error) {
         console.error('Erreur:', error);
@@ -223,109 +327,21 @@ export default function CardDetailPage() {
     };
 
     fetchCardDetails();
-  }, [params.id, router]);
-
-  const getModuleAccessUrl = async (moduleName: string) => {
-    if (!session) {
-      alert('Vous devez être connecté pour accéder à ce module');
-      return;
-    }
-
-    // Vérifier si c'est un module qui nécessite un magic link
-                                                         if (false) { // Aucun module avec limitation de temps
-      try {
-        const response = await fetch('/api/generate-magic-link', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId: user.id,
-            subscriptionId: `${moduleName.toLowerCase()}-sub-789`,
-            moduleName: moduleName.toLowerCase(),
-            userEmail: user.email,
-            redirectUrl: `https://${moduleName.toLowerCase()}.regispailler.fr`
-          }),
-        });
-
-        if (response.ok) {
-          const { magicLinkUrl } = await response.json();
-          console.log('🔗 Magic link généré:', magicLinkUrl);
-          window.open(magicLinkUrl, '_blank');
-        } else {
-          console.error('Erreur lors de la génération du magic link');
-          alert('Erreur lors de la génération du lien d\'accès');
-        }
-      } catch (error) {
-        console.error('Erreur:', error);
-        alert('Erreur lors de la génération du lien d\'accès');
-      }
-    } else if (moduleName === 'IA metube' || moduleName === 'IAmetube') {
-      // Accès direct pour IA metube
-      console.log('🔍 Accès direct vers: https://metube.regispailler.fr');
-      window.open('https://metube.regispailler.fr', '_blank');
-    } else {
-                                           // Accès direct pour les autres modules
-                                     const moduleUrls: { [key: string]: string } = {
-                                       'IAphoto': 'https://iaphoto.regispailler.fr',
-                                       'IAvideo': 'https://iavideo.regispailler.fr',
-                                       'Librespeed': 'https://librespeed.regispailler.fr',
-                                       'PSitransfer': 'https://psitransfer.regispailler.fr',
-                                       'PDF+': 'https://pdfplus.regispailler.fr',
-                                     };
-      
-      const directUrl = moduleUrls[moduleName];
-      if (directUrl) {
-        console.log('🔍 Accès direct vers:', directUrl);
-        window.open(directUrl, '_blank');
-      } else {
-        // Fallback : essayer un magic link
-        try {
-          const response = await fetch('/api/generate-magic-link', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              userId: user.id,
-              subscriptionId: `${moduleName.toLowerCase()}-sub-789`,
-              moduleName: moduleName.toLowerCase(),
-              userEmail: user.email,
-              redirectUrl: `https://${moduleName.toLowerCase()}.regispailler.fr`
-            }),
-          });
-
-          if (response.ok) {
-            const { magicLinkUrl } = await response.json();
-            console.log('🔗 Magic link généré:', magicLinkUrl);
-            window.open(magicLinkUrl, '_blank');
-          } else {
-            console.error('Erreur lors de la génération du magic link');
-            alert('Erreur lors de la génération du lien d\'accès');
-          }
-        } catch (error) {
-          console.error('Erreur:', error);
-          alert('Erreur lors de la génération du lien d\'accès');
-        }
-      }
-    }
-  };
+  }, [params.id, router, session]);
 
   const handleSubscribe = (card: Card) => {
     const isSelected = selectedCards.some(c => c.id === card.id);
     let newSelectedCards;
     
     if (isSelected) {
-      // Désabonner
       newSelectedCards = selectedCards.filter(c => c.id !== card.id);
       console.log('Désabonnement de:', card.title);
     } else {
-      // S'abonner
       newSelectedCards = [...selectedCards, card];
       console.log('Abonnement à:', card.title);
     }
     
-            console.log('Nouveaux modules sélectionnés:', newSelectedCards);
+    console.log('Nouveaux modules sélectionnés:', newSelectedCards);
     setSelectedCards(newSelectedCards);
     localStorage.setItem('selectedCards', JSON.stringify(newSelectedCards));
     console.log('localStorage mis à jour');
@@ -333,6 +349,71 @@ export default function CardDetailPage() {
 
   const isCardSelected = (cardId: string) => {
     return selectedCards.some(card => card.id === cardId);
+  };
+
+  const handleChoose = () => {
+    setIsSelected(true);
+  };
+
+  const handleActivate = async () => {
+    if (!user?.email) {
+      alert('Veuillez vous connecter pour activer ce module');
+      return;
+    }
+
+    if (!card) {
+      alert('Module non trouvé');
+      return;
+    }
+
+    setIsActivating(true);
+    setIsProcessing(true);
+
+    try {
+      // Créer l'intention de paiement
+      const response = await fetch('/api/create-payment-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          items: [{
+            id: card.id,
+            title: card.title,
+            description: card.description,
+            price: typeof card.price === 'string' ? parseFloat(card.price) : card.price
+          }],
+          customerEmail: user.email,
+          type: 'payment'
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la création du paiement');
+      }
+
+      const { url: sessionUrl } = await response.json();
+
+      // Rediriger vers Stripe Checkout
+      if (sessionUrl) {
+        window.location.href = sessionUrl;
+      } else {
+        throw new Error('URL de session Stripe manquante');
+      }
+
+    } catch (error) {
+      console.error('Erreur lors de l\'activation:', error);
+      alert('Erreur lors de l\'activation du module. Veuillez réessayer.');
+    } finally {
+      setIsActivating(false);
+      setIsProcessing(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsSelected(false);
+    setIsActivating(false);
+    setIsProcessing(false);
   };
 
   if (loading) {
@@ -361,7 +442,7 @@ export default function CardDetailPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
-      {/* Fil d'Ariane amélioré - placé juste en dessous du Header */}
+      {/* Fil d'Ariane */}
       <div className="bg-white/60 backdrop-blur-sm border-b border-gray-200/50 pt-2">
         <div className="max-w-7xl mx-auto px-6 py-1">
           <Breadcrumb 
@@ -373,19 +454,19 @@ export default function CardDetailPage() {
         </div>
       </div>
 
-      {/* Contenu principal avec animations */}
+      {/* Contenu principal */}
       <main className="max-w-7xl mx-auto px-6 py-12">
         <div className="space-y-12">
           {/* Grille principale */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             {/* Colonne principale */}
             <div className="lg:col-span-2 space-y-8">
-              {/* En-tête de la carte avec design moderne */}
+              {/* En-tête de la carte */}
               <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 p-8 hover:shadow-2xl transition-all duration-300">
                 <div className="mb-8">
                   <div className="flex-1">
                     <span className="inline-block px-4 py-2 bg-gradient-to-r from-green-400 to-emerald-500 text-white text-sm font-bold rounded-full mb-6 shadow-lg">
-                      {card.category?.toUpperCase() || 'BUILDING BLOCKS'}
+                      {card.category?.toUpperCase() || 'IA ASSISTANT'}
                     </span>
                     <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-2 leading-tight">
                       {card.title}
@@ -398,27 +479,20 @@ export default function CardDetailPage() {
                   </div>
                 </div>
 
-                {/* Vidéo YouTube avec design amélioré */}
-                <div className="w-full aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl overflow-hidden shadow-2xl hover:shadow-3xl transition-all duration-300">
-                  <iframe
-                    className="w-full h-full"
-                    src="https://www.youtube.com/embed/inW3l-DpA7U?rel=0&modestbranding=1"
-                    title="SDNext - Stable Diffusion Next Generation - Démonstration"
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  ></iframe>
+                {/* Vidéo YouTube - Temporairement désactivée pour éviter les erreurs YouTubeJS */}
+                <div className="w-full aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl overflow-hidden shadow-2xl hover:shadow-3xl transition-all duration-300 flex items-center justify-center">
+                  <div className="text-center p-8">
+                    <div className="text-6xl mb-4">🎥</div>
+                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Démonstration vidéo</h3>
+                    <p className="text-gray-500">Vidéo temporairement indisponible</p>
+                  </div>
                 </div>
-
-                
-
-                
               </div>
             </div>
 
-            {/* Sidebar moderne */}
+            {/* Sidebar */}
             <div className="space-y-8">
-              {/* Carte d'action avec design premium */}
+              {/* Carte d'action */}
               <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 p-8 hover:shadow-2xl transition-all duration-300">
                 <div className="text-left mb-8">
                   <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4 rounded-2xl shadow-lg mb-4">
@@ -428,179 +502,174 @@ export default function CardDetailPage() {
                 </div>
 
                 <div className="space-y-6">
-                  {/* Bouton d'abonnement ou d'accès gratuit */}
-                  {card.price === '0' && session ? (
+                  {/* Boutons d'action */}
+                  {(card.price === 0 || card.price === '0') && session ? (
                     // Bouton d'accès gratuit pour les modules gratuits (uniquement si connecté)
-                    <button 
-                      className={`w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 ${
-                        card.title === 'Metube' && session 
-                          ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white'
-                          : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white'
-                      }`}
-                      onClick={async () => {
-                        if (!session) {
-                          alert('Connectez-vous pour accéder à ce module');
-                          return;
-                        }
-
-                        // Logique spéciale pour Metube avec JWT
-                        if (card.title === 'Metube') {
-                          try {
-                            console.log('🔍 Génération du token JWT pour Metube');
-                            const response = await fetch('/api/generate-access-token', {
-                              method: 'POST',
-                              headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${session?.access_token}`
-                              },
-                              body: JSON.stringify({
-                                moduleId: card.id,
-                                moduleName: 'metube'
-                              }),
-                            });
-                            if (!response.ok) {
-                              const errorData = await response.json();
-                              throw new Error(errorData.error || `Erreur HTTP ${response.status}`);
-                            }
-                            const { accessToken } = await response.json();
-                            console.log('✅ Token JWT généré avec succès pour Metube');
-                            const accessUrl = `https://metube.regispailler.fr?token=${accessToken}`;
-                            console.log('🔗 URL d\'accès Metube:', accessUrl);
-                            window.open(accessUrl, '_blank');
-                          } catch (error) {
-                            console.error('❌ Erreur lors de l\'accès à Metube:', error);
-                            alert(`Erreur lors de l'accès à Metube: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+                    <>
+                      <button 
+                        className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                        onClick={async () => {
+                          if (!session) {
+                            alert('Connectez-vous pour accéder à ce module');
+                            return;
                           }
-                          return;
-                        }
 
-                        // Accès direct pour les autres modules gratuits
-                        const moduleUrls: { [key: string]: string } = {
-                          'Librespeed': 'https://librespeed.regispailler.fr',
-                          'PSitransfer': 'https://psitransfer.regispailler.fr',
-                          'PDF+': 'https://pdfplus.regispailler.fr',
-                        };
-                        
-                        const directUrl = moduleUrls[card.title];
-                        if (directUrl) {
-                          console.log('🔍 Ouverture de', card.title, 'dans une iframe:', directUrl);
-                          setIframeModal({
-                            isOpen: true,
-                            url: directUrl,
-                            title: card.title
-                          });
-                        } else {
-                          alert(`Module gratuit "${card.title}" - Accès disponible pour les utilisateurs connectés`);
-                        }
-                      }}
-                    >
-                      <span className="text-xl">{card.title === 'Metube' && session ? '🔑' : '🆓'}</span>
-                      <span>{card.title === 'Metube' && session ? 'Accès gratuit' : 'Accéder gratuitement'}</span>
-                    </button>
-                  ) : card.price === '0' && !session ? (
+                          // Utiliser l'accès JWT pour tous les modules gratuits (sécurisé)
+                          console.log('🔍 Ouverture du module gratuit', card.title, 'avec token JWT');
+                          await accessModuleWithJWT(card.title, card.id);
+                        }}
+                      >
+                        <span className="text-xl">🆓</span>
+                        <span>Accéder gratuitement</span>
+                      </button>
+                      
+                                                 {/* Lien direct vers Gradio pour RuinedFooocus gratuit */}
+                           {card.title.toLowerCase() === 'ruinedfooocus' && (
+                             <>
+                               <a 
+                                 href="https://da4be546aab3e23055.gradio.live/"
+                                 target="_blank"
+                                 rel="noopener noreferrer"
+                                 className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                                 title="Accéder directement à l'application RuinedFooocus sur Gradio"
+                               >
+                                 <span className="text-xl">🚀</span>
+                                 <span>Accès direct Gradio</span>
+                               </a>
+                               
+                               {/* Bouton d'accès local pour RuinedFooocus */}
+                               <button 
+                                 className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                                 onClick={async () => {
+                                   if (!session) {
+                                     alert('Connectez-vous pour accéder à cette ressource locale');
+                                     return;
+                                   }
+                                   
+                                   console.log('🔑 Accès local RuinedFooocus demandé');
+                                   
+                                   try {
+                                     const response = await fetch('/api/generate-local-token', {
+                                       method: 'POST',
+                                       headers: {
+                                         'Content-Type': 'application/json',
+                                         'Authorization': `Bearer ${session?.access_token}`
+                                       },
+                                       body: JSON.stringify({
+                                         targetUrl: 'http://192.168.1.150:7870',
+                                         moduleTitle: 'RuinedFooocus Local',
+                                         moduleId: card.id
+                                       }),
+                                     });
+                                     
+                                     if (!response.ok) {
+                                       const errorData = await response.json();
+                                       throw new Error(errorData.error || `Erreur HTTP ${response.status}`);
+                                     }
+                                     
+                                     const { token: localToken } = await response.json();
+                                     console.log('✅ Token local généré avec succès');
+                                     
+                                     // Construire l'URL sécurisée avec le token
+                                     const secureUrl = `/api/local-proxy?token=${localToken}`;
+                                     console.log('🔗 URL d\'accès local sécurisée:', secureUrl);
+                                     
+                                     setIframeModal({
+                                       isOpen: true,
+                                       url: secureUrl,
+                                       title: 'RuinedFooocus Local'
+                                     });
+                                   } catch (error) {
+                                     console.error('❌ Erreur lors de l\'accès local:', error);
+                                     alert(`Erreur lors de l'accès local: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+                                   }
+                                 }}
+                                 title="Accéder à l'application RuinedFooocus locale (192.168.1.150:7870)"
+                               >
+                                 <span className="text-xl">🏠</span>
+                                 <span>Accès Local (192.168.1.150)</span>
+                               </button>
+                             </>
+                           )}
+                    </>
+                  ) : (card.price === 0 || card.price === '0') && !session ? (
                     // Message pour les modules gratuits quand l'utilisateur n'est pas connecté
                     <div className="text-left p-4 bg-gray-100 rounded-lg">
                       <p className="text-gray-600 mb-2">Module gratuit</p>
                       <p className="text-sm text-gray-500">Connectez-vous pour accéder à ce module</p>
                     </div>
                   ) : (
-                    // Bouton de sélection pour les modules payants (sauf les modules gratuits spécifiques)
+                    // Boutons pour les modules payants
                     <div className="space-y-4">
-                      {!['PSitransfer', 'PDF+', 'Metube', 'Librespeed'].includes(card.title) && (
-                        <button 
-                          className={`w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 ${
-                            isCardSelected(card.id)
-                              ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white'
-                              : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white'
-                          }`}
-                          onClick={() => handleSubscribe(card)}
-                        >
-                          <span className="text-xl">🔐</span>
-                          <span>{isCardSelected(card.id) ? 'Sélectionné' : 'Choisir'}</span>
-                        </button>
+                      {!['PSitransfer', 'PDF+', 'Librespeed'].includes(card.title) && (
+                        <>
+                          {!isSelected ? (
+                            <button 
+                              className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                              onClick={handleChoose}
+                            >
+                              <span className="text-xl">🔐</span>
+                              <span>Choisir</span>
+                            </button>
+                          ) : (
+                            <div className="space-y-3">
+                              <button 
+                                className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                                onClick={handleActivate}
+                                disabled={isProcessing}
+                              >
+                                {isProcessing ? (
+                                  <span className="text-xl animate-spin">⏳</span>
+                                ) : (
+                                  <span className="text-xl">⚡</span>
+                                )}
+                                <span>
+                                  {isProcessing ? 'Traitement...' : `Activer ${card.title}`}
+                                </span>
+                              </button>
+                              
+                              <button 
+                                className="w-full font-semibold py-3 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gray-100 hover:bg-gray-200 text-gray-700 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                                onClick={handleCancel}
+                                disabled={isProcessing}
+                              >
+                                <span>Annuler</span>
+                              </button>
+                            </div>
+                          )}
+                        </>
                       )}
-                      
-                                             {/* Bouton "Activer la sélection" qui apparaît après avoir cliqué sur "Choisir" (uniquement pour les modules payants) */}
-                       {isCardSelected(card.id) && card.price !== '0' && (
-                         <button 
-                           className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-                                                       onClick={async () => {
-                              // Vérifier si l'utilisateur est connecté
-                              if (!session) {
-                                // Rediriger vers la page de création de compte
-                                window.location.href = '/register';
-                                return;
-                              }
 
-                             // Créer une session de paiement pour ce module spécifique
-                             try {
-                               const response = await fetch('/api/create-payment-intent', {
-                                 method: 'POST',
-                                 headers: {
-                                   'Content-Type': 'application/json',
-                                 },
-                                 body: JSON.stringify({
-                                   items: [card], // Seulement ce module
-                                   customerEmail: user?.email,
-                                   type: 'payment',
-                                 }),
-                               });
-
-                               if (!response.ok) {
-                                 throw new Error(`Erreur HTTP ${response.status}`);
-                               }
-
-                               const { url, error } = await response.json();
-
-                               if (error) {
-                                 throw new Error(`Erreur API: ${error}`);
-                               }
-
-                               // Rediriger vers Stripe Checkout
-                               if (url) {
-                                 window.location.href = url;
-                               } else {
-                                 throw new Error('URL de session Stripe manquante.');
-                               }
-                             } catch (error) {
-                               console.error('Erreur lors de l\'activation:', error);
-                               alert(`Erreur lors de l'activation: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
-                             }
-                           }}
-                         >
-                           <span className="text-xl">⚡</span>
-                           <span>Activer {card.title}</span>
-                         </button>
-                       )}
-
-                                             {/* Bouton JWT - visible seulement si l'utilisateur a accès au module */}
-                       {session && userSubscriptions[card.title] && (
-                         <button 
-                           className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-                           onClick={async () => {
-                             await accessModuleWithJWT(card.title, card.id);
-                           }}
-                         >
-                           <span className="text-xl">🔑</span>
-                           <span>Accéder à {card.title}</span>
-                         </button>
-                       )}
+                      {/* Bouton dupliqué supprimé - le bouton est déjà dans la section des modules gratuits */}
                     </div>
                   )}
 
-                                     {!session && (
-                     <div className="bg-gray-50 rounded-xl p-4 text-center">
-                       <p className="text-sm text-gray-600">
-                         <Link href="/register" className="text-blue-600 hover:text-blue-800 font-medium">
-                           Connectez-vous
-                         </Link> {card.price === 0 ? 'pour accéder' : 'pour utiliser le module'}
-                       </p>
-                     </div>
-                   )}
+                  {/* Bouton d'accès - visible seulement si l'utilisateur a déjà payé pour le module */}
+                  {session && userSubscriptions[card.title] && (
+                    <button 
+                      className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                      onClick={async () => {
+                        await accessModuleWithJWT(card.title, card.id);
+                      }}
+                    >
+                      <span className="text-xl">🔑</span>
+                      <span>Accéder à {card.title}</span>
+                    </button>
+                  )}
+
+                  {!session && (
+                    <div className="bg-gray-50 rounded-xl p-4 text-center">
+                      <p className="text-sm text-gray-600">
+                        <Link href="/login" className="text-blue-600 hover:text-blue-800 font-medium">
+                          Connectez-vous
+                        </Link> {card.price === 0 ? 'pour accéder' : 'pour utiliser le module'}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Liens utiles avec design moderne */}
+              {/* Liens utiles */}
               <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 p-8 hover:shadow-2xl transition-all duration-300">
                 <h3 className="text-xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-6">Liens utiles</h3>
                 <div className="space-y-4">
@@ -654,7 +723,7 @@ export default function CardDetailPage() {
                 </div>
               </div>
 
-              {/* Prérequis avec design moderne */}
+              {/* Prérequis */}
               {card.requirements && card.requirements.length > 0 && (
                 <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 p-8 hover:shadow-2xl transition-all duration-300">
                   <h3 className="text-xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-6">Prérequis</h3>
@@ -772,17 +841,16 @@ export default function CardDetailPage() {
       {/* Zone de détails du module - Pleine largeur */}
       <div className="bg-gradient-to-br from-gray-50 to-indigo-50/30 border-t border-gray-200/50 py-20">
         <div className="max-w-7xl mx-auto px-6">
-                      <div className="text-left mb-16">
-              <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-4">
-                {card.subtitle || card.title}
-              </h2>
+          <div className="text-left mb-16">
+            <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-4">
+              {card.subtitle || card.title}
+            </h2>
             <div 
               className="text-xl text-gray-600 max-w-4xl mx-auto"
               dangerouslySetInnerHTML={{ __html: card.description }}
             />
           </div>
           
-
 
           {/* Avantages clés */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
@@ -824,8 +892,6 @@ export default function CardDetailPage() {
             </div>
           </div>
 
-
-
           {/* Informations techniques */}
           <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 p-12">
             <h3 className="text-3xl font-bold bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent mb-8 text-center">
@@ -836,7 +902,7 @@ export default function CardDetailPage() {
                 <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-8 border border-blue-100">
                   <div className="text-sm text-gray-600 mb-2 font-medium">Catégorie</div>
                   <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                    {card.category || 'BUILDING BLOCKS'}
+                    {card.category || 'IA ASSISTANT'}
                   </div>
                 </div>
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-8 border border-green-100">
@@ -878,17 +944,33 @@ export default function CardDetailPage() {
             
             {/* Contenu de l'iframe */}
             <div className="flex-1 p-4">
-              <iframe
-                src={iframeModal.url}
-                className="w-full h-full border-0 rounded"
-                title={iframeModal.title}
-                allowFullScreen
-              />
+              {(() => {
+                const isLocalProxy = iframeModal.url.startsWith('/api/');
+                const isLibreSpeedProxy = iframeModal.url.startsWith('/api/proxy-librespeed');
+                const isMetubeProxy = iframeModal.url.startsWith('/api/proxy-metube');
+                const sandbox = isLibreSpeedProxy
+                  ? 'allow-scripts allow-forms allow-same-origin'
+                  : isMetubeProxy
+                    ? 'allow-scripts allow-forms allow-same-origin'
+                    : isLocalProxy
+                      ? 'allow-scripts allow-forms'
+                      : 'allow-scripts allow-forms allow-popups allow-modals allow-same-origin';
+                return (
+                  <iframe
+                    src={iframeModal.url}
+                    className="w-full h-full border-0 rounded"
+                    title={iframeModal.title}
+                    allowFullScreen
+                    sandbox={sandbox}
+                    referrerPolicy="no-referrer"
+                    loading="lazy"
+                  />
+                );
+              })()}
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 } 

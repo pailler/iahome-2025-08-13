@@ -57,10 +57,10 @@ export async function POST(request: NextRequest) {
 
     console.log('🔍 Debug - Validation OK, création session...');
     console.log('🔍 Debug - Montant total:', totalAmount);
-    console.log('🔍 Debug - Items:', items.map(item => ({ title: item.title, price: item.price })));
+    console.log('🔍 Debug - Items:', items.map((item: any) => ({ title: item.title, price: item.price })));
 
     // Vérifier l'URL de l'application
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://home.regispailler.fr';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'; // URL relative pour les tests
     console.log('🔍 Debug - URL de l\'application:', appUrl);
 
     // Préparer les métadonnées limitées (max 500 caractères)
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
         quantity: 1,
       })),
       mode: type === 'subscription' ? 'subscription' : 'payment',
-      success_url: `${appUrl}/success?success=true`,
+      success_url: `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}&module=${encodeURIComponent(items[0]?.title || 'Module IA')}`,
       cancel_url: `${appUrl}/cancel?canceled=true`,
       customer_email: customerEmail,
       metadata: metadata,

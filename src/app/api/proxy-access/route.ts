@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 
     // Configuration des URLs de base pour chaque module
     const moduleUrls: { [key: string]: string } = {
-      'IAmetube': 'https://metube.regispailler.fr',
+      'IAmetube': '/api/proxy-metube',
       'stablediffusion': 'https://stablediffusion.regispailler.fr',
       'IAphoto': 'https://iaphoto.regispailler.fr',
       'IAvideo': 'https://iavideo.regispailler.fr',
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Créer l'URL de la page proxy qui gère l'authentification
-    const proxyUrl = `https://home.regispailler.fr/proxy/${module}?token=${token}`;
+    const proxyUrl = `https://iahome.fr/proxy/${module}?token=${token}`;
     
     console.log('✅ Redirection vers page proxy:', proxyUrl);
     console.log('🔐 Module:', module, 'avec authentification automatique');

@@ -49,7 +49,7 @@
 - `analyze-sql-files.js`
 - `check-access-after-test.js`
 - `check-duplicate-modules.js`
-- `check-metube-price.js`
+
 - `check-module-ids.js`
 - `check-modules.js`
 - `check-supabase-users.js`
@@ -89,8 +89,7 @@
 - `setup-menu-system.js`
 - `setup-module-mapping.js`
 - `simple-check-duplicates.js`
-- `set-metube-free.js`
-- `set-metube-free.sql`
+
 - `publish-blog-articles.sql`
 - `drop-cartes-table.sql`
 
@@ -131,20 +130,14 @@
 - `secure-iframe-deployment.md`
 
 #### **Fichiers de Configuration (8 fichiers)**
-- `metube-jwt-auth.py`
 - `stablediffusion-jwt-auth.py`
 - `requirements.txt`
-- `nginx-metube-jwt-proxy.conf`
-- `nginx-metube-proxy.conf`
 - `nginx-stablediffusion.conf`
-- `docker-compose-metube-jwt-nginx.yml`
-- `docker-compose-metube-nginx.yml`
 - `docker-compose-stablediffusion.yml`
 
 #### **Dossiers Vides Supprimés**
 - `logs/` (dossier vide)
-- `nginx-metube-jwt-proxy.conf/` (dossier vide)
-- `nginx-metube-protection.conf/` (dossier vide)
+
 
 ### **🗄️ Base de Données Nettoyée**
 

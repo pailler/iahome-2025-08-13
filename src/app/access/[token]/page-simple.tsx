@@ -80,7 +80,7 @@ export default function AccessPageSimple() {
         // Rediriger vers le module après un court délai
         setTimeout(() => {
           const moduleUrls: { [key: string]: string } = {
-            'IAmetube': 'https://metube.regispailler.fr',
+            'IAmetube': '/api/proxy-metube',
             'IAphoto': 'https://iaphoto.regispailler.fr',
             'IAvideo': 'https://iavideo.regispailler.fr',
             'test-module': 'https://test.example.com',

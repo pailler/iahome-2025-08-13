@@ -142,7 +142,7 @@ export default function DynamicPage() {
           <Breadcrumb 
             items={[
               { label: 'Accueil', href: '/' },
-              { label: page.title, href: `/${page.slug}`, current: true }
+              { label: page.title, href: `/${page.slug}` }
             ]} 
           />
         </div>

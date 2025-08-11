@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  iahome-speedtest:
+    image: lscr.io/linuxserver/librespeed:latest
+    container_name: iahome-speedtest
+    ports:
+      - "6702:80"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Paris
+    volumes:
+      - librespeed_config:/config
+    restart: unless-stopped
+    networks:
+      - iahome-network
+
+volumes:
+  librespeed_config:
+
+networks:
+  iahome-network:
+    external: true
+
+

@@ -376,7 +376,7 @@ export default function ActiveApplicationsPage() {
                   ))}
                 </select>
                 <button
-                  onClick={fetchApplications}
+                  onClick={() => fetchApplications()}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   🔄 Actualiser
@@ -534,7 +534,7 @@ export default function ActiveApplicationsPage() {
             <div>
               <div className="mb-6">
                 <button
-                  onClick={fetchAccessLogs}
+                  onClick={() => fetchAccessLogs()}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   🔄 Actualiser les logs

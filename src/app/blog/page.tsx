@@ -88,10 +88,11 @@ export default function BlogPage() {
 
   const fetchArticles = async () => {
     try {
+      // Requête avec filtre is_published remis
       const { data, error } = await supabase
         .from('blog_articles')
         .select('*')
-        .eq('is_published', true)
+        .eq('is_published', true)  // Filtre remis
         .order('published_at', { ascending: false });
 
       if (error) {
@@ -99,6 +100,7 @@ export default function BlogPage() {
         return;
       }
 
+      console.log('Articles publiés chargés:', data); // Debug
       setArticles(data || []);
     } catch (error) {
       console.error('Erreur:', error);

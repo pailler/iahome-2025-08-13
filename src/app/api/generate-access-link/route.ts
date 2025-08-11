@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     console.log('✅ Token généré:', token.substring(0, 20) + '...');
     
     // Utiliser la page d'iframe pour masquer l'URL réelle
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://home.regispailler.fr';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://iahome.fr';
     const iframeUrl = `${baseUrl}/module/${token}`;
     
     console.log('✅ URL de base:', baseUrl);

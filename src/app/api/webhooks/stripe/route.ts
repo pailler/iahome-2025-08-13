@@ -44,10 +44,13 @@ export async function POST(request: NextRequest) {
         await handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session);
         break;
       
+      case 'payment_intent.created':
+        console.log('🔍 Payment Intent created reçu:', event.data.object.id);
+        // Attendre payment_intent.succeeded pour traiter
+        break;
+      
       case 'payment_intent.succeeded':
-        // Ignorer les payment_intent.succeeded car ils n'ont pas les métadonnées
-        // Les métadonnées sont dans checkout.session.completed
-        console.log('🔍 Payment Intent succeeded ignoré (métadonnées dans checkout.session.completed)');
+        await handlePaymentIntentSucceeded(event.data.object as Stripe.PaymentIntent);
         break;
       
       case 'invoice.payment_succeeded':
@@ -95,7 +98,137 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   console.log('🔍 Debug - Métadonnées:', session.metadata);
   
   if (customerEmail && itemsIds.length > 0) {
-    console.log('🔍 Debug - Envoi email de confirmation à:', customerEmail);
+    console.log('🔍 Debug - Traitement du paiement pour:', customerEmail);
+    
+    // Récupérer l'utilisateur par email
+    const { data: user, error: userError } = await supabase
+      .from('profiles')
+      .select('id, email')
+      .eq('email', customerEmail)
+      .single();
+
+    if (userError || !user) {
+      console.error('❌ Utilisateur non trouvé pour:', customerEmail);
+      return;
+    }
+
+    // Ajouter l'accès module pour chaque module acheté
+    for (const moduleId of itemsIds) {
+      try {
+        console.log('🔑 Ajout accès module pour:', moduleId);
+        
+        // Vérifier si le module existe
+        const { data: moduleData, error: moduleError } = await supabase
+          .from('modules')
+          .select('id, title')
+          .eq('id', moduleId)
+          .single();
+
+        if (moduleError || !moduleData) {
+          console.error('❌ Module non trouvé:', moduleId);
+          continue;
+        }
+
+        // Vérifier si l'accès existe déjà
+        const { data: existingAccess, error: checkError } = await supabase
+          .from('module_access')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('module_id', parseInt(moduleId))
+          .eq('is_active', true)
+          .single();
+
+        if (existingAccess) {
+          console.log('✅ Accès déjà existant pour:', customerEmail, moduleId);
+          continue;
+        }
+
+        // Créer l'accès module dans module_access
+        const { data: accessData, error: accessError } = await supabase
+          .from('module_access')
+          .insert({
+            user_id: user.id,
+            module_id: parseInt(moduleId),
+            access_type: 'purchase',
+            expires_at: new Date(Date.now() + (72 * 60 * 60 * 1000)).toISOString(), // 72 heures
+            is_active: true,
+            metadata: {
+              session_id: session.id,
+              purchased_at: new Date().toISOString(),
+              amount: amount,
+              payment_method: 'stripe'
+            }
+          })
+          .select()
+          .single();
+
+        if (accessError) {
+          console.error('❌ Erreur création accès module:', accessError);
+          continue;
+        }
+
+        console.log('✅ Accès module créé avec succès:', accessData.id);
+        
+      } catch (error) {
+        console.error('❌ Erreur lors de l\'ajout de l\'accès pour le module', moduleId, ':', error);
+      }
+    }
+    
+    // Enregistrer le paiement dans la table payments
+    try {
+      const { error: paymentError } = await supabase
+        .from('payments')
+        .insert({
+          session_id: session.id,
+          customer_email: customerEmail,
+          amount: amount,
+          currency: 'eur',
+          status: 'succeeded',
+          module_id: itemsIds[0], // Premier module pour la référence
+          metadata: {
+            all_modules: itemsIds,
+            payment_intent: session.payment_intent,
+            customer_details: session.customer_details
+          }
+        });
+
+      if (paymentError) {
+        console.error('❌ Erreur enregistrement paiement:', paymentError);
+      } else {
+        console.log('✅ Paiement enregistré avec succès');
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'enregistrement du paiement:', error);
+    }
+    
+    // Créer un objet items pour l'email
+    const items = itemsIds.map((id: string) => ({ id, module_id: id }));
+    await sendPaymentConfirmationEmail(customerEmail, session, items, amount);
+    
+    console.log('✅ Traitement du paiement terminé avec succès');
+
+  } else {
+    console.error('❌ Erreur - Email client ou IDs modules manquants dans la session Stripe');
+    console.error('❌ Email client:', customerEmail);
+    console.error('❌ IDs modules:', itemsIds);
+    console.error('❌ Métadonnées:', session.metadata);
+  }
+}
+
+async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent) {
+  console.log('🔍 Debug - Paiement réussi pour l\'intention:', paymentIntent.id);
+  console.log('🔍 Debug - PaymentIntent complète:', JSON.stringify(paymentIntent, null, 2));
+  
+  // Récupérer les détails du client depuis les métadonnées
+  const customerEmail = paymentIntent.metadata?.customer_email;
+  const itemsIds = paymentIntent.metadata?.items_ids ? paymentIntent.metadata.items_ids.split(',') : [];
+  
+  console.log('🔍 Debug - Email récupéré:', customerEmail);
+  console.log('🔍 Debug - IDs des modules:', itemsIds);
+  console.log('🔍 Debug - Montant:', paymentIntent.amount);
+  
+  if (customerEmail && itemsIds.length > 0) {
+    console.log('🔍 Debug - Traitement du paiement pour:', customerEmail);
     
     // Récupérer l'utilisateur par email
     const { data: user, error: userError } = await supabase
@@ -114,7 +247,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       try {
         console.log('🔑 Génération automatique du token pour le module:', moduleId);
         
-        const tokenResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/generate-module-token`, {
+        const tokenResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/generate-module-token-webhook`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -122,7 +255,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
           body: JSON.stringify({
             moduleId: moduleId,
             userId: user.id,
-            paymentId: session.id,
+            paymentId: paymentIntent.id,
             accessLevel: 'premium',
             expirationHours: 72, // 3 jours par défaut
             maxUsage: 100
@@ -145,44 +278,13 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     
     // Créer un objet items pour l'email
     const items = itemsIds.map((id: string) => ({ id, module_id: id }));
-    await sendPaymentConfirmationEmail(customerEmail, session, items, amount);
-    
-    // Créer les accès modules pour chaque item acheté
-    for (const moduleId of itemsIds) {
-      await addModuleAccess(customerEmail, moduleId, session.id);
-    }
-  } else {
-    console.error('❌ Erreur - Email client ou IDs modules manquants dans la session Stripe');
-    console.error('❌ Email client:', customerEmail);
-    console.error('❌ IDs modules:', itemsIds);
-    console.error('❌ Métadonnées:', session.metadata);
-  }
-}
-
-async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent) {
-  console.log('🔍 Debug - Paiement réussi pour l\'intention:', paymentIntent.id);
-  console.log('🔍 Debug - PaymentIntent complète:', JSON.stringify(paymentIntent, null, 2));
-  
-  // Récupérer les détails du client depuis les métadonnées
-  const customerEmail = paymentIntent.metadata?.customer_email;
-  const itemsIds = paymentIntent.metadata?.items_ids ? paymentIntent.metadata.items_ids.split(',') : [];
-  
-  console.log('🔍 Debug - Email récupéré:', customerEmail);
-  console.log('🔍 Debug - IDs des modules:', itemsIds);
-  console.log('🔍 Debug - Montant:', paymentIntent.amount);
-  
-  if (customerEmail && itemsIds.length > 0) {
-    console.log('🔍 Debug - Envoi email de confirmation à:', customerEmail);
-    // Créer un objet items pour l'email
-    const items = itemsIds.map((id: string) => ({ id, module_id: id }));
     await sendPaymentConfirmationEmail(customerEmail, null, items, paymentIntent.amount);
     
-    // Créer les accès modules pour chaque item acheté
-    for (const moduleId of itemsIds) {
-      await addModuleAccess(customerEmail, moduleId, paymentIntent.id);
-    }
   } else {
     console.error('❌ Erreur - Email client ou IDs modules manquants dans les métadonnées PaymentIntent');
+    console.error('❌ Email client:', customerEmail);
+    console.error('❌ IDs modules:', itemsIds);
+    console.error('❌ Métadonnées:', paymentIntent.metadata);
   }
 }
 
@@ -287,7 +389,11 @@ async function sendTokenEmail(email: string, token: any) {
       </div>
     `;
     
-    await emailService.sendEmail(email, subject, htmlContent);
+    await emailService.sendEmail({
+      to: email,
+      subject,
+      html: htmlContent
+    });
     console.log('✅ Email avec token envoyé à:', email);
   } catch (error) {
     console.error('❌ Erreur envoi email avec token:', error);
@@ -367,7 +473,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
               </div>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://home.regispailler.fr'}/abonnements" 
+                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/abonnements" 
                    style="display: inline-block; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
                   Réactiver mon abonnement
                 </a>

@@ -10,11 +10,12 @@ interface Module {
   description: string;
   subtitle?: string;
   category: string;
-  categories?: string[]; // Nouvelles catégories multiples
   price: number;
   youtube_url?: string;
+  url?: string; // Nouveau champ pour l'URL d'accès
+  image_url?: string; // Nouveau champ pour l'URL de l'image
   created_at?: string;
-  updated_at?: string;
+  updated_at?: string; // Optionnel car peut ne pas exister dans la base
 }
 
 interface AccessToken {
@@ -59,8 +60,6 @@ export default function AdminModulesPage() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [showManageModal, setShowManageModal] = useState(false);
-  const [editingModule, setEditingModule] = useState<Module | null>(null);
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [isAdding, setIsAdding] = useState(false);
 
@@ -148,12 +147,7 @@ export default function AdminModulesPage() {
     }
   };
 
-  // Gérer l'édition d'un module
-  const handleEditModule = (module: Module) => {
-    setEditingModule(module);
-    setIsAdding(false);
-    setShowModal(true);
-  };
+
 
   // Gérer la suppression d'un module
   const handleDeleteModule = async (moduleId: string) => {
@@ -182,7 +176,7 @@ export default function AdminModulesPage() {
 
   // Gérer l'ajout d'un module
   const handleAddModule = () => {
-    setEditingModule(null);
+    setSelectedModule(null);
     setIsAdding(true);
     setShowModal(true);
   };
@@ -190,7 +184,7 @@ export default function AdminModulesPage() {
   // Gérer un module (mode gestion)
   const handleManageModule = (module: Module) => {
     setSelectedModule(module);
-    setShowManageModal(true);
+    setShowModal(true);
   };
 
   // Gérer la modification d'un token
@@ -249,14 +243,14 @@ export default function AdminModulesPage() {
     const moduleUrls: { [key: string]: string } = {
       'stablediffusion': 'https://stablediffusion.regispailler.fr',
       'iaphoto': 'https://iaphoto.regispailler.fr', 
-      'iametube': 'https://metube.regispailler.fr',
+      'iametube': '/api/proxy-metube',
       'chatgpt': 'https://chatgpt.regispailler.fr',
-      'librespeed': 'https://librespeed.regispailler.fr',
+      'librespeed': '/api/proxy-librespeed',
       'psitransfer': 'https://psitransfer.regispailler.fr',
       'pdf+': 'https://pdfplus.regispailler.fr',
       'aiassistant': 'https://aiassistant.regispailler.fr',
       'cogstudio': 'https://cogstudio.regispailler.fr',
-      'ruinedfooocus': 'https://ruinedfooocus.regispailler.fr',
+              'ruinedfooocus': '/api/gradio-secure',
       'invoke': 'https://invoke.regispailler.fr'
     };
     
@@ -286,72 +280,505 @@ export default function AdminModulesPage() {
     }
   };
 
-  // Sauvegarder un module
-    const handleSaveModule = async (moduleData: any) => {
+  // Fonction de sauvegarde simplifiée (solution de secours)
+  const handleSaveModuleSimple = async (moduleData: any) => {
     try {
+      console.log('🔄 Utilisation de la fonction de sauvegarde simplifiée...');
+      
+      // Vérifier l'authentification d'abord
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.error('❌ Aucune session utilisateur trouvée');
+        alert('Erreur: Vous devez être connecté pour modifier les modules');
+        return;
+      }
+      
+      console.log('✅ Session utilisateur trouvée:', session.user.email);
+      
+      // Données minimales
+      const simpleData = {
+        title: moduleData.title?.trim(),
+        description: moduleData.description?.trim(),
+        category: moduleData.category?.trim(),
+        price: Number(moduleData.price) || 0
+      };
+      
+      console.log('📝 Données simplifiées:', simpleData);
+      
       if (isAdding) {
         // Ajouter un nouveau module
         const { data, error } = await supabase
           .from('modules')
-          .insert([moduleData])
+          .insert([simpleData])
+          .select();
+        
+        if (error) {
+          throw error;
+        }
+        
+        setModules([data[0], ...modules]);
+        setShowModal(false);
+        setSelectedModule(null);
+        setIsAdding(false);
+        alert('Module ajouté avec succès');
+        
+      } else {
+        // Modifier un module existant
+        if (!selectedModule?.id) {
+          alert('Erreur: ID du module manquant');
+          return;
+        }
+        
+        const { data, error } = await supabase
+          .from('modules')
+          .update(simpleData)
+          .eq('id', selectedModule.id)
+          .select();
+        
+        if (error) {
+          throw error;
+        }
+        
+        setModules(modules.map(m => 
+          m.id === selectedModule.id ? { ...m, ...simpleData } : m
+        ));
+        setShowModal(false);
+        setSelectedModule(null);
+        alert('Module modifié avec succès');
+      }
+      
+        } catch (error) {
+      console.error('❌ Erreur dans la fonction simplifiée:', error);       
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      alert(`Erreur: ${errorMessage}`);
+    }
+  };
+
+  // Diagnostic détaillé de la base de données
+  const diagnoseDatabase = async () => {
+    try {
+      console.log('🔍 Début du diagnostic de la base de données...');
+      
+      // 1. Test de connexion basique
+      console.log('1️⃣ Test de connexion basique...');
+      const { data: testData, error: testError } = await supabase
+        .from('modules')
+        .select('count')
+        .limit(1);
+      
+      if (testError) {
+        console.error('❌ Erreur de connexion:', testError);
+        return { success: false, error: testError };
+      }
+      
+      console.log('✅ Connexion basique réussie');
+      
+      // 2. Vérifier la structure de la table
+      console.log('2️⃣ Vérification de la structure...');
+      const { data: structureData, error: structureError } = await supabase
+        .from('modules')
+        .select('*')
+        .limit(1);
+      
+      if (structureError) {
+        console.error('❌ Erreur de structure:', structureError);
+        return { success: false, error: structureError };
+      }
+      
+      const columns = Object.keys(structureData[0] || {});
+      console.log('✅ Colonnes disponibles:', columns);
+      
+      // Vérifier si updated_at existe
+      const hasUpdatedAt = columns.includes('updated_at');
+      console.log('📋 Colonne updated_at présente:', hasUpdatedAt);
+      
+      if (!hasUpdatedAt) {
+        console.warn('⚠️ La colonne updated_at n\'existe pas. Cela peut causer des problèmes.');
+      }
+      
+      // 3. Test d'insertion simple
+      console.log('3️⃣ Test d\'insertion simple...');
+      const testModule = {
+        title: 'Test Module',
+        description: 'Module de test pour diagnostic',
+        category: 'Test',
+        price: 0.00
+      };
+      
+      const { data: insertData, error: insertError } = await supabase
+        .from('modules')
+        .insert([testModule])
+        .select()
+        .single();
+      
+      if (insertError) {
+        console.error('❌ Erreur d\'insertion:', insertError);
+        return { success: false, error: insertError };
+      }
+      
+      console.log('✅ Insertion réussie:', insertData);
+      
+      // 4. Test de mise à jour
+      console.log('4️⃣ Test de mise à jour...');
+      const { data: updateData, error: updateError } = await supabase
+        .from('modules')
+        .update({ title: 'Test Module Updated' })
+        .eq('id', insertData.id)
+        .select()
+        .single();
+      
+      if (updateError) {
+        console.error('❌ Erreur de mise à jour:', updateError);
+        return { success: false, error: updateError };
+      }
+      
+      console.log('✅ Mise à jour réussie:', updateData);
+      
+      // 5. Nettoyer le test
+      console.log('5️⃣ Nettoyage du test...');
+      const { error: deleteError } = await supabase
+        .from('modules')
+        .delete()
+        .eq('id', insertData.id);
+      
+      if (deleteError) {
+        console.error('⚠️ Erreur de suppression (non critique):', deleteError);
+      } else {
+        console.log('✅ Test nettoyé');
+      }
+      
+      console.log('🎉 Diagnostic terminé avec succès!');
+      return { success: true, columns };
+      
+    } catch (error) {
+      console.error('❌ Erreur lors du diagnostic:', error);
+      return { success: false, error };
+    }
+  };
+
+  // Gérer les erreurs de colonnes manquantes
+  const handleMissingColumnError = (error: any) => {
+    console.error('🔍 Analyse de l\'erreur:', error);
+    
+    if (error.message && error.message.includes('Could not find the')) {
+      const columnMatch = error.message.match(/Could not find the '([^']+)' column/);
+      if (columnMatch) {
+        const missingColumn = columnMatch[1];
+        console.error(`❌ Colonne manquante détectée: ${missingColumn}`);
+        
+        const solution = `
+Erreur: Colonne '${missingColumn}' manquante dans la table modules.
+
+Solutions:
+1. Exécuter le script SQL dans Supabase:
+   - Aller dans l'interface SQL de Supabase
+   - Copier et exécuter le contenu de fix-database.sql
+
+2. Ou exécuter cette commande SQL:
+   ALTER TABLE public.modules ADD COLUMN ${missingColumn} TEXT;
+
+3. Vérifier la structure de la table:
+   SELECT column_name FROM information_schema.columns 
+   WHERE table_schema = 'public' AND table_name = 'modules';
+        `;
+        
+        alert(solution);
+        return true;
+      }
+    }
+    
+    return false;
+  };
+
+  // Tester la connexion à Supabase et la structure de la table
+  const testSupabaseConnection = async () => {
+    try {
+      console.log('🔍 Test de connexion à Supabase...');
+      
+      // Test de connexion basique
+      const { data: testData, error: testError } = await supabase
+        .from('modules')
+        .select('count')
+        .limit(1);
+      
+      if (testError) {
+        console.error('❌ Erreur de connexion à Supabase:', testError);
+        alert(`Erreur de connexion à Supabase: ${testError.message}`);
+        return false;
+      }
+      
+      console.log('✅ Connexion à Supabase réussie');
+      
+      // Vérifier la structure de la table
+      const { data: structureData, error: structureError } = await supabase
+        .from('modules')
+        .select('*')
+        .limit(1);
+      
+      if (structureError) {
+        console.error('❌ Erreur lors de la vérification de la structure:', structureError);
+        alert(`Erreur de structure de table: ${structureError.message}`);
+        return false;
+      }
+      
+      console.log('✅ Structure de la table modules vérifiée');
+      const availableColumns = Object.keys(structureData[0] || {});
+      console.log('📋 Colonnes disponibles:', availableColumns);
+      
+      // Vérifier les colonnes requises
+      const requiredColumns = ['id', 'title', 'description', 'category', 'price'];
+      const missingColumns = requiredColumns.filter(col => !availableColumns.includes(col));
+      
+      if (missingColumns.length > 0) {
+        console.error('❌ Colonnes manquantes:', missingColumns);
+        alert(`Colonnes manquantes dans la table modules: ${missingColumns.join(', ')}\nVeuillez exécuter le script fix-database.sql`);
+        return false;
+      }
+      
+      // Vérifier les colonnes optionnelles
+      const optionalColumns = ['url', 'image_url'];
+      const missingOptionalColumns = optionalColumns.filter(col => !availableColumns.includes(col));
+      
+      if (missingOptionalColumns.length > 0) {
+        console.warn('⚠️ Colonnes optionnelles manquantes:', missingOptionalColumns);
+        console.warn('Ces colonnes peuvent être ajoutées avec le script fix-database.sql');
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Erreur lors du test de connexion:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      alert(`Erreur lors du test de connexion: ${errorMessage}`);
+      return false;
+    }
+  };
+
+  // Validation des données du module
+  const validateModuleData = (moduleData: any): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    
+    // Validation des champs obligatoires
+    if (!moduleData.title || moduleData.title.trim().length === 0) {
+      errors.push('Le titre est obligatoire');
+    }
+    
+    if (!moduleData.description || moduleData.description.trim().length === 0) {
+      errors.push('La description est obligatoire');
+    }
+    
+    if (!moduleData.category || moduleData.category.trim().length === 0) {
+      errors.push('La catégorie est obligatoire');
+    }
+    
+    // Validation du prix
+    if (moduleData.price === undefined || moduleData.price === null) {
+      errors.push('Le prix est obligatoire');
+    } else if (isNaN(Number(moduleData.price)) || Number(moduleData.price) < 0) {
+      errors.push('Le prix doit être un nombre positif');
+    }
+    
+    // Validation des URLs (optionnelles mais si présentes, doivent être valides)
+    if (moduleData.youtube_url && moduleData.youtube_url.trim().length > 0) {
+      try {
+        new URL(moduleData.youtube_url);
+      } catch {
+        errors.push('L\'URL YouTube n\'est pas valide');
+      }
+    }
+    
+    if (moduleData.url && moduleData.url.trim().length > 0) {
+      try {
+        new URL(moduleData.url);
+      } catch {
+        errors.push('L\'URL du module n\'est pas valide');
+      }
+    }
+    
+    if (moduleData.image_url && moduleData.image_url.trim().length > 0) {
+      try {
+        new URL(moduleData.image_url);
+      } catch {
+        errors.push('L\'URL de l\'image n\'est pas valide');
+      }
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  };
+
+  // Sauvegarder un module
+  const handleSaveModule = async (moduleData: any) => {
+    try {
+      console.log('🚀 Début de la sauvegarde du module...');
+      console.log('📝 Données reçues:', moduleData);
+      
+      // Diagnostic complet de la base de données
+      console.log('🔍 Lancement du diagnostic...');
+      const diagnosis = await diagnoseDatabase();
+      
+      if (!diagnosis.success) {
+        console.error('❌ Diagnostic échoué:', diagnosis.error);
+        console.log('🔄 Tentative avec la fonction simplifiée...');
+        await handleSaveModuleSimple(moduleData);
+        return;
+      }
+      
+      console.log('✅ Diagnostic réussi, colonnes disponibles:', diagnosis.columns);
+      
+      // Vérifier si updated_at existe dans la base
+      const hasUpdatedAt = diagnosis.columns?.includes('updated_at') || false;
+      console.log('📋 Colonne updated_at présente:', hasUpdatedAt);
+      
+      // Validation des données
+      const validation = validateModuleData(moduleData);
+      if (!validation.isValid) {
+        alert(`Erreurs de validation:\n${validation.errors.join('\n')}`);
+        return;
+      }
+
+      // Nettoyer les données avant sauvegarde
+      const cleanData: any = {
+        title: moduleData.title.trim(),
+        description: moduleData.description.trim(),
+        subtitle: moduleData.subtitle?.trim() || null,
+        category: moduleData.category.trim(),
+        price: Number(moduleData.price),
+        youtube_url: moduleData.youtube_url?.trim() || null
+      };
+      
+      // Ajouter les colonnes optionnelles seulement si elles existent dans les données
+      if (moduleData.url !== undefined) {
+        cleanData.url = moduleData.url?.trim() || null;
+      }
+      
+      if (moduleData.image_url !== undefined) {
+        cleanData.image_url = moduleData.image_url?.trim() || null;
+      }
+      
+      // Ne pas inclure updated_at si la colonne n'existe pas
+      if (!hasUpdatedAt && cleanData.updated_at !== undefined) {
+        delete cleanData.updated_at;
+        console.log('⚠️ Colonne updated_at supprimée des données car elle n\'existe pas dans la base');
+      }
+      
+      // Supprimer les propriétés undefined ou null qui peuvent causer des erreurs
+      Object.keys(cleanData).forEach(key => {
+        if (cleanData[key] === undefined || cleanData[key] === null || cleanData[key] === '') {
+          delete cleanData[key];
+        }
+      });
+      
+      console.log('📝 Données à sauvegarder:', cleanData);
+      console.log('🔍 État de selectedModule:', selectedModule);
+      console.log('🔍 Mode isAdding:', isAdding);
+      
+      if (isAdding) {
+        // Ajouter un nouveau module
+        const { data, error } = await supabase
+          .from('modules')
+          .insert([cleanData])
           .select()
           .single();
         
         if (error) {
-          console.error('Erreur lors de l\'ajout:', error);
-          alert('Erreur lors de l\'ajout du module');
-          } else {
+          console.error('❌ Erreur lors de l\'ajout:', error);
+          console.error('📋 Détails de l\'erreur:', {
+            code: error.code,
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            type: typeof error,
+            keys: Object.keys(error)
+          });
+          
+          // Essayer de gérer les erreurs de colonnes manquantes
+          if (!handleMissingColumnError(error)) {
+            const errorMessage = error.message || error.details || error.hint || 'Erreur inconnue';
+            alert(`Erreur lors de l'ajout du module:\n${errorMessage}`);
+          }
+        } else {
           setModules([data, ...modules]);
           setShowModal(false);
-          setEditingModule(null);
+          setSelectedModule(null);
           setIsAdding(false);
           alert('Module ajouté avec succès');
         }
       } else {
+        // Vérifier que l'ID du module existe
+        if (!selectedModule) {
+          console.error('Module en édition manquant');
+          alert('Erreur: Module en édition manquant');
+          return;
+        }
+        
+        if (!selectedModule.id) {
+          console.error('ID du module manquant pour la modification');
+          console.error('Module complet:', selectedModule);
+          alert('Erreur: ID du module manquant');
+          return;
+        }
+        
+        console.log('✅ ID du module trouvé:', selectedModule.id);
+        console.log('✅ Module en cours d\'édition:', selectedModule.title);
+        
         // Modifier un module existant
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('modules')
-          .update(moduleData)
-          .eq('id', editingModule?.id);
+          .update(cleanData)
+          .eq('id', selectedModule.id)
+          .select()
+          .single();
 
         if (error) {
-          console.error('Erreur lors de la modification:', error);
-          alert('Erreur lors de la modification du module');
-            } else {
+          console.error('❌ Erreur lors de la modification:', error);
+          console.error('📋 Détails de l\'erreur:', {
+            code: error.code,
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            type: typeof error,
+            keys: Object.keys(error),
+            fullError: JSON.stringify(error, null, 2)
+          });
+          console.error('📝 Données envoyées:', cleanData);
+          console.error('🔍 ID du module:', selectedModule.id);
+          
+          // Essayer de gérer les erreurs de colonnes manquantes
+          if (!handleMissingColumnError(error)) {
+            const errorMessage = error.message || error.details || error.hint || 'Erreur inconnue';
+            alert(`Erreur lors de la modification du module:\n${errorMessage}`);
+          }
+        } else {
           setModules(modules.map(m => 
-            m.id === editingModule?.id ? { ...m, ...moduleData } : m
+            m.id === selectedModule.id ? { ...m, ...cleanData } : m
           ));
           setShowModal(false);
-          setEditingModule(null);
+          setSelectedModule(null);
           alert('Module modifié avec succès');
         }
       }
     } catch (error) {
-      console.error('Erreur lors de la sauvegarde:', error);
-      alert('Erreur lors de la sauvegarde du module');
+      console.error('❌ Erreur lors de la sauvegarde:', error);
+      console.error('📋 Type d\'erreur:', typeof error);
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      const errorStack = error instanceof Error ? error.stack : 'Pas de stack trace';
+      console.error('📋 Message d\'erreur:', errorMessage);
+      console.error('📋 Stack trace:', errorStack);
+      console.error('📋 Erreur complète:', JSON.stringify(error, null, 2));
+      
+      // Afficher l'erreur dans une alerte plus détaillée
+      alert(`Erreur lors de la sauvegarde du module:\n\n${errorMessage}\n\nVérifiez la console pour plus de détails.`);
     }
   };
 
-  // Obtenir les informations du token
+    // Obtenir les informations du token
   const getTokenInfo = (module: Module): TokenInfo => {
     const moduleName = module.title.toLowerCase().replace(/\s+/g, '');
     
-    // Mapping des URLs des modules
-    const moduleUrls: { [key: string]: string } = {
-      'stablediffusion': 'https://stablediffusion.regispailler.fr',
-      'iaphoto': 'https://iaphoto.regispailler.fr', 
-      'iametube': 'https://metube.regispailler.fr',
-      'chatgpt': 'https://chatgpt.regispailler.fr',
-      'librespeed': 'https://librespeed.regispailler.fr',
-      'psitransfer': 'https://psitransfer.regispailler.fr',
-      'pdf+': 'https://pdfplus.regispailler.fr',
-      'aiassistant': 'https://aiassistant.regispailler.fr',
-      'cogstudio': 'https://cogstudio.regispailler.fr',
-      'ruinedfooocus': 'https://ruinedfooocus.regispailler.fr',
-      'invoke': 'https://invoke.regispailler.fr'
-    };
-                              
-    const baseUrl = moduleUrls[moduleName] || 'https://stablediffusion.regispailler.fr';
+    // Utiliser l'URL du module depuis la base de données, sinon URL par défaut
+    const baseUrl = module.url || 'https://stablediffusion.regispailler.fr';
     const accessUrl = `${baseUrl}?token={JWT_TOKEN}`;
     
     return {
@@ -449,27 +876,35 @@ export default function AdminModulesPage() {
                   const expiredTokens = moduleTokensList.filter(token => new Date(token.expires_at) < new Date());
                   
                   return (
-                    <tr key={module.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                                 <div>
-                          <div className="text-sm font-medium text-gray-900">{module.title}</div>
-                          {module.subtitle && (
-                            <div className="text-sm text-gray-500">{module.subtitle}</div>
-                          )}
-                        </div>
-                      </td>
+                                         <tr key={module.id} className="hover:bg-gray-50">
+                       <td className="px-6 py-4 whitespace-nowrap">
+                         <div className="flex items-center space-x-3">
+                           {module.image_url && (
+                             <div className="flex-shrink-0">
+                               <img
+                                 src={module.image_url}
+                                 alt={module.title}
+                                 className="h-12 w-12 rounded-lg object-cover"
+                                 onError={(e) => {
+                                   e.currentTarget.style.display = 'none';
+                                 }}
+                               />
+                             </div>
+                           )}
+                           <div>
+                             <div className="text-sm font-medium text-gray-900">{module.title}</div>
+                             {module.subtitle && (
+                               <div className="text-sm text-gray-500">{module.subtitle}</div>
+                             )}
+                           </div>
+                         </div>
+                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex flex-wrap gap-1">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             {module.category}
                           </span>
-                          {module.categories && module.categories.length > 0 && (
-                            module.categories.map((cat, index) => (
-                              <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                {cat}
-                              </span>
-                            ))
-                          )}
+                          
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -502,28 +937,22 @@ export default function AdminModulesPage() {
                    )}
                 </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleEditModule(module)}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            Modifier
-                          </button>
-                          <button
-                            onClick={() => handleManageModule(module)}
-                            className="text-green-600 hover:text-green-900"
-                          >
-                            Gérer
-                          </button>
-                          <button
-                            onClick={() => handleDeleteModule(module.id)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            Supprimer
-                          </button>
-                        </div>
-                      </td>
+                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                         <div className="flex space-x-2">
+                           <button
+                             onClick={() => handleManageModule(module)}
+                             className="text-blue-600 hover:text-blue-900"
+                           >
+                             Gérer
+                           </button>
+                           <button
+                             onClick={() => handleDeleteModule(module.id)}
+                             className="text-red-600 hover:text-red-900"
+                           >
+                             Supprimer
+                           </button>
+                         </div>
+                       </td>
                     </tr>
                   );
                 })}
@@ -531,37 +960,25 @@ export default function AdminModulesPage() {
             </table>
           </div>
         </div>
-        {/* Modal pour ajouter/modifier un module */}
-        {showModal && (
-          <UnifiedModuleModal
-            module={editingModule}
-            isAdding={isAdding}
-            onSave={handleSaveModule}
-            onClose={() => {
-              setShowModal(false);
-              setEditingModule(null);
-              setIsAdding(false);
-            }}
-          />
-        )}
-
-        {/* Modal pour gérer un module */}
-        {showManageModal && selectedModule && (
-          <UnifiedModuleModal
-            module={selectedModule}
-            isAdding={false}
-            onSave={handleSaveModule}
-            onClose={() => {
-              setShowManageModal(false);
-              setSelectedModule(null);
-            }}
-            onCheckStatus={checkServiceStatus}
-            tokenInfo={getTokenInfo(selectedModule)}
-            moduleTokens={moduleTokens[selectedModule.id] || []}
-            onEditToken={handleEditToken}
-            onDeleteToken={handleDeleteToken}
-          />
-                   )}
+                          {/* Modal unifié pour ajouter/modifier/gérer un module */}
+         {showModal && (
+           <UnifiedModuleModal
+             module={selectedModule}
+             isAdding={isAdding}
+             onSave={handleSaveModule}
+             onClose={() => {
+               console.log('🔍 Fermeture du modal - selectedModule:', selectedModule);
+               setShowModal(false);
+               setSelectedModule(null);
+               setIsAdding(false);
+             }}
+             onCheckStatus={!isAdding ? checkServiceStatus : undefined}
+             tokenInfo={!isAdding && selectedModule ? getTokenInfo(selectedModule) : undefined}
+             moduleTokens={!isAdding && selectedModule ? moduleTokens[selectedModule.id] || [] : undefined}
+             onEditToken={!isAdding ? handleEditToken : undefined}
+             onDeleteToken={!isAdding ? handleDeleteToken : undefined}
+           />
+         )}
                 </div>
                </div>
   );

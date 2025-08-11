@@ -5,6 +5,7 @@ import { supabase } from "../utils/supabaseClient";
 import { useRouter } from 'next/navigation';
 import Link from "next/link";
 import Breadcrumb from '../components/Breadcrumb';
+import ModuleCard from '../components/ModuleCard';
 
 export default function Home() {
   const router = useRouter();
@@ -25,12 +26,7 @@ export default function Home() {
 
 
 
-  // État pour la modal iframe
-  const [iframeModal, setIframeModal] = useState<{isOpen: boolean, url: string, title: string}>({
-    isOpen: false,
-    url: '',
-    title: ''
-  });
+
 
   // Vérification de la configuration Supabase
   useEffect(() => {
@@ -68,6 +64,8 @@ export default function Home() {
       userEmail: user?.email,
       userId: user?.id 
     });
+    
+
   }, [session, user]);
 
       // Vérifier les sélections actives de l'utilisateur
@@ -77,16 +75,22 @@ export default function Home() {
       
       try {
         const { data, error } = await supabase
-          .from('user_subscriptions')
-          .select('module_name, end_date')
+          .from('module_access')
+          .select(`
+            module_id,
+            expires_at,
+            modules(title)
+          `)
           .eq('user_id', user.id)
-          .eq('status', 'active')
-          .gt('end_date', new Date().toISOString());
+          .eq('access_type', 'active')
+          .gt('expires_at', new Date().toISOString());
         
         if (!error && data) {
           const subscriptions: {[key: string]: boolean} = {};
           data.forEach(sub => {
-            subscriptions[sub.module_name] = true;
+            if (sub.modules && sub.modules.length > 0) {
+              subscriptions[sub.modules[0].title] = true;
+            }
           });
           setUserSubscriptions(subscriptions);
           console.log('✅ Sélections actives:', subscriptions);
@@ -143,6 +147,8 @@ export default function Home() {
           console.error('Hint:', modulesError.hint);
         } else {
           console.log('Modules chargés avec succès:', modulesData);
+          
+
           
           // Traiter les modules avec leurs catégories multiples
           const modulesWithRoles = (modulesData || []).map(module => {
@@ -310,14 +316,14 @@ export default function Home() {
     'IA BUREAUTIQUE', 
     'IA PHOTO', 
     'IA VIDEO', 
-    'IA MAO', 
+          'IA AUDIO', 
     'IA PROMPTS', 
     'IA MARKETING', 
     'IA DESIGN', 
     'Web Tools', 
     'IA FORMATION', 
     'IA DEVELOPPEMENT',
-    'BUILDING BLOCKS'
+    
   ];
 
   // Filtrer et combiner les catégories
@@ -335,7 +341,7 @@ export default function Home() {
       const matchesSearch = !search || 
         module.title.toLowerCase().includes(search.toLowerCase()) ||
         module.description?.toLowerCase().includes(search.toLowerCase()) ||
-        (module.categories || [module.category]).some(cat => 
+                (module.categories || [module.category]).some((cat: string) =>
           cat.toLowerCase().includes(search.toLowerCase())
         );
 
@@ -511,7 +517,7 @@ export default function Home() {
         },
         body: JSON.stringify({
           moduleName: moduleName,
-          durationMinutes: moduleName === 'Metube' ? 720 : 1440 // 12h pour Metube, 24h pour les autres
+          durationMinutes: 1440 // 24h pour tous les modules
         }),
       });
 
@@ -530,9 +536,6 @@ export default function Home() {
 
   // Fonction pour obtenir les conditions d'accès selon le module
   const getAccessConditions = (moduleTitle: string) => {
-    if (moduleTitle === 'Metube') {
-      return '12 heures';
-    }
     return 'Accès illimité';
   };
 
@@ -555,12 +558,7 @@ export default function Home() {
       },
 
 
-      'metube': { 
-        bgColor: 'bg-red-500', 
-        icon: '📺', 
-        text: 'Vidéo',
-        imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format'
-      },
+
       'iaphoto': { 
         bgColor: 'bg-green-500', 
         icon: '📷', 
@@ -833,7 +831,7 @@ export default function Home() {
       'ia assistant': { bgColor: 'bg-indigo-600', icon: '🤖', text: 'Assistant IA', imageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=225&fit=crop&auto=format' },
       'ia photo': { bgColor: 'bg-green-500', icon: '📷', text: 'IA Photo', imageUrl: 'https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=400&h=225&fit=crop&auto=format' },
       'ia video': { bgColor: 'bg-red-500', icon: '🎬', text: 'IA Vidéo', imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format' },
-      'ia mao': { bgColor: 'bg-red-500', icon: '🎵', text: 'IA MAO', imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format' },
+      'ia audio': { bgColor: 'bg-red-500', icon: '🎵', text: 'IA AUDIO', imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&h=225&fit=crop&auto=format' },
       'ia design': { bgColor: 'bg-green-500', icon: '🎨', text: 'IA Design', imageUrl: 'https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=400&h=225&fit=crop&auto=format' },
       'ia marketing': { bgColor: 'bg-indigo-600', icon: '📊', text: 'IA Marketing', imageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=225&fit=crop&auto=format' },
       'ia prompts': { bgColor: 'bg-indigo-600', icon: '💡', text: 'IA Prompts', imageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=225&fit=crop&auto=format' },
@@ -873,23 +871,37 @@ export default function Home() {
                   L'essentiel de l'IA réuni pour une utilisation simple et directe.
                 </p>
               
-              {/* Barre de recherche */}
-              <div className="relative max-w-lg">
-                <input
-                  type="text"
-                  placeholder="Search for a template"
-                  className="w-full px-6 py-4 pl-12 pr-16 rounded-xl border-2 border-white/20 bg-white/10 backdrop-blur-sm text-white placeholder-white/70 focus:outline-none focus:border-white focus:ring-4 focus:ring-white/20 transition-all"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                />
-                <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-white/70">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" />
-                  </svg>
+              {/* Barre de recherche et bouton Mes applis */}
+              <div className="flex flex-col sm:flex-row gap-4 max-w-lg">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    placeholder="Applis"
+                    className="w-full px-6 py-4 pl-12 pr-16 rounded-xl border-2 border-white/20 bg-white/10 backdrop-blur-sm text-white placeholder-white/70 focus:outline-none focus:border-white focus:ring-4 focus:ring-white/20 transition-all"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                  />
+                  <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-white/70">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" />
+                    </svg>
+                  </div>
+                  <button className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors font-medium">
+                    Rechercher
+                  </button>
                 </div>
-                <button className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors font-medium">
-                  Search
-                </button>
+                
+                {/* Bouton Mes applications - Visible seulement si connecté */}
+                {session && (
+                  <Link 
+                    href="/encours" 
+                    className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-800 font-semibold px-6 py-4 rounded-xl hover:from-yellow-500 hover:to-yellow-600 transition-all duration-300 flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105 min-w-[160px]"
+                  >
+                    <span className="text-lg">📱</span>
+                    <span className="hidden sm:inline">Mes applications</span>
+                    <span className="sm:hidden">Mes applications</span>
+                  </Link>
+                )}
               </div>
             </div>
             
@@ -918,23 +930,22 @@ export default function Home() {
       {/* Section principale avec filtres et contenu */}
       <section className="py-12">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="flex flex-col lg:flex-row gap-8">
+          <div className="flex flex-col lg:flex-row gap-6">
             {/* Sidebar gauche - Catégories */}
-            <aside className="lg:w-64 shrink-0">
-              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                <h2 className="text-lg font-semibold text-blue-900 mb-4">Catégorie</h2>
-                <div className="space-y-2">
+            <aside className="lg:w-64 shrink-0 order-2 lg:order-1">
+              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                <div className="flex flex-wrap gap-2">
                   {categories.map((cat) => (
                     <button 
                       key={cat} 
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
                         categoryFilter === (cat === 'Toutes les catégories' ? 'all' : cat)
-                          ? 'bg-blue-600 text-white' 
-                          : 'text-gray-700 hover:bg-gray-100'
+                          ? 'bg-blue-600 text-white shadow-md' 
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-sm'
                       }`}
                       onClick={() => setCategoryFilter(cat === 'Toutes les catégories' ? 'all' : cat)}
                     >
-                      {cat === 'Toutes les catégories' ? cat : toUpperCase(cleanCategory(cat))}
+                      {cat === 'Toutes les catégories' ? 'Toutes' : toUpperCase(cleanCategory(cat))}
                     </button>
                   ))}
                 </div>
@@ -942,12 +953,12 @@ export default function Home() {
             </aside>
 
             {/* Contenu principal */}
-            <div className="flex-1">
+            <div className="flex-1 order-1 lg:order-2">
               {/* Filtres */}
-              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-8">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="bg-white rounded-xl p-4 lg:p-6 shadow-sm border border-gray-100 mb-6 lg:mb-8">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 lg:gap-4">
                   {/* Dropdowns */}
-                  <div className="flex flex-col sm:flex-row gap-3 flex-1">
+                  <div className="flex flex-col sm:flex-row gap-2 lg:gap-3 flex-1">
                                          <select 
                        className="px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                        value={priceFilter}
@@ -1006,197 +1017,11 @@ export default function Home() {
                   </div>
                 ) : (
                   currentModules.map((module) => (
-                    <div key={module.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
-                      {/* En-tête du module */}
-                      <div className="p-6 pb-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex flex-wrap gap-1">
-                            {/* Afficher toutes les catégories du module */}
-                            {(module.categories || [module.category]).map((cat, index) => (
-                              <span 
-                                key={index}
-                                className="inline-block px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded"
-                              >
-                                {toUpperCase(cleanCategory(cat))}
-                              </span>
-                            ))}
-                          </div>
-                          {session && role === 'admin' && (
-                            <div className="flex gap-1">
-                              <button 
-                                onClick={() => handleDeleteModule(module.id)}
-                                className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                                title="Supprimer"
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                                </svg>
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                        
-                        <Link href={`/card/${module.id}`}>
-                          <h3 className="text-lg font-semibold text-blue-900 mb-1 hover:text-blue-700 cursor-pointer transition-colors">{module.title}</h3>
-                          {module.subtitle && (
-                            <p className="text-sm text-gray-500 mb-2 italic">{module.subtitle}</p>
-                          )}
-                        </Link>
-                      </div>
-
-
-
-                      {/* Visuel généré par IA selon le module */}
-                      <div className="w-full aspect-video rounded-lg border border-gray-200 overflow-hidden mb-4">
-                                                {(() => {
-                          const title = module.title.toLowerCase();
-                          const category = module.category.toLowerCase();
-                          let imageSrc = '';
-                          
-                          // Mapping spécifique pour certains modules
-                          if (title.includes('metube')) {
-                            imageSrc = '/images/iatube.jpg';
-                          } else if (title.includes('invoke')) {
-                            imageSrc = '/images/chatgpt.jpg';
-                          } else if (title.includes('stablediffusion') || title.includes('sdnext')) {
-                            imageSrc = '/images/stablediffusion.jpg';
-                          } else if (title.includes('ruinefooocus')) {
-                            imageSrc = '/images/chatgpt.jpg';
-                          } else if (title.includes('iaphoto')) {
-                            imageSrc = '/images/iaphoto.jpg';
-                          } else if (title.includes('chatgpt') || title.includes('gpt')) {
-                            imageSrc = '/images/chatgpt.jpg';
-                          } else if (title.includes('pdf') || title.includes('document')) {
-                            imageSrc = '/images/pdf-plus.jpg';
-                          } else if (title.includes('psitransfer') || title.includes('transfer')) {
-                            imageSrc = '/images/psitransfer.jpg';
-                          } else {
-                            // Attribution d'images par catégorie pour tous les autres modules
-                            if (category.includes('video')) {
-                              imageSrc = '/images/iatube.jpg';
-                            } else if (category.includes('photo')) {
-                              imageSrc = '/images/iaphoto.jpg';
-                            } else if (category.includes('assistant') || category.includes('ai')) {
-                              imageSrc = '/images/chatgpt.jpg';
-                            } else if (category.includes('bureautique') || category.includes('document')) {
-                              imageSrc = '/images/pdf-plus.jpg';
-                            } else if (category.includes('design') || category.includes('marketing')) {
-                              imageSrc = '/images/chatgpt.jpg';
-                            } else if (category.includes('mao') || category.includes('audio')) {
-                              imageSrc = '/images/psitransfer.jpg';
-                            } else {
-                              // Image par défaut pour les autres catégories
-                              imageSrc = '/images/chatgpt.jpg';
-                            }
-                          }
-                          
-                          return (
-                            <img
-                              src={imageSrc}
-                              alt={`Interface ${module.title}`}
-                              className="w-full h-full object-cover"
-                            />
-                          );
-                        })()}
-                      </div>
-
-                      {/* Pied du module */}
-                      <div className="p-6 pt-4">
-                        {/* Tags d'information */}
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          {module.role && (
-                            <span className="inline-block px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded">
-                              👤 {module.role}
-                            </span>
-                          )}
-                          {module.experience_level && (
-                            <span className="inline-block px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded">
-                              📚 {module.experience_level}
-                            </span>
-                          )}
-                          {module.usage_count && (
-                            <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
-                              📊 {module.usage_count} utilisations
-                            </span>
-                          )}
-
-                        </div>
-
-                                                 {/* Prix et bouton */}
-                         <div className="flex items-center justify-between">
-                           <div className="flex items-center gap-3">
-                                                         <div className="text-2xl font-bold text-blue-900">
-                              {module.price === '0' ? 'Accès gratuit' : `€${module.price}`}
-                            </div>
-                           </div>
-                           <div className="flex gap-2">
-                             {/* Bouton d'accès direct pour les modules avec abonnement actif uniquement (pas pour les modules gratuits) */}
-{session && userSubscriptions[module.title] && module.price !== '0' && (
-                               <button 
-                                 className="px-4 py-2 rounded-lg font-semibold text-sm bg-green-600 hover:bg-green-700 text-white transition-colors"
-                                 onClick={async () => {
-                                   // Vérifier l'accès au module avant d'ouvrir
-                                   const accessCheck = await checkModuleAccess(module.title);
-                                   
-                                   if (!accessCheck.canAccess) {
-                                     if (accessCheck.reason === 'Session expirée') {
-                                       alert(`Session expirée pour ${module.title}. Veuillez générer un nouveau lien d'accès.`);
-                                     } else {
-                                       alert(`Accès refusé pour ${module.title}: ${accessCheck.reason}`);
-                                     }
-                                     return;
-                                   }
-
-                                   // Accès direct pour tous les modules dans une iframe
-                                   if (module.title === 'Metube') {
-                                     // Générer un magic link de 12 heures pour Metube
-                                     console.log('🔍 Génération d\'un magic link de 12 heures pour Metube');
-                                     const magicLink = await generateModuleMagicLink(module.title);
-                                     if (magicLink) {
-                                       setIframeModal({
-                                         isOpen: true,
-                                         url: magicLink,
-                                         title: module.title
-                                       });
-                                     } else {
-                                       alert('Erreur lors de la génération du lien d\'accès');
-                                     }
-                                   } else {
-                                     // Accès direct pour tous les autres modules dans une iframe
-                                     const moduleUrls: { [key: string]: string } = {
-                                       'IAphoto': 'https://iaphoto.regispailler.fr',
-                                       'IAvideo': 'https://iavideo.regispailler.fr',
-                                       'Librespeed': 'https://librespeed.regispailler.fr',
-                                       'PSitransfer': 'https://psitransfer.regispailler.fr',
-                                       'PDF+': 'https://pdfplus.regispailler.fr',
-                                       'Stable diffusion': 'https://stablediffusion.regispailler.fr',
-                                     };
-                                     
-                                     const directUrl = moduleUrls[module.title];
-                                     if (directUrl) {
-                                       console.log('🔍 Ouverture de', module.title, 'dans une iframe:', directUrl);
-                                       setIframeModal({
-                                         isOpen: true,
-                                         url: directUrl,
-                                         title: module.title
-                                       });
-                                     } else {
-                                       // Pour les modules gratuits sans URL spécifique, afficher un message
-                                       if (module.price === '0') {
-                                         alert(`Module gratuit "${module.title}" - Accès disponible pour les utilisateurs connectés`);
-                                       }
-                                     }
-                                   }
-                                 }}
-                                 title={`Accéder à ${module.title}`}
-                               >
-                                 📺 Accéder
-                               </button>
-                             )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    <ModuleCard
+                      key={module.id}
+                      module={module}
+                      userEmail={user?.email}
+                    />
                   ))
                 )}
               </div>
@@ -1316,37 +1141,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Modal pour l'iframe */}
-      {iframeModal.isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl h-[90vh] flex flex-col">
-            {/* Header de la modal */}
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {iframeModal.title}
-              </h3>
-              <button
-                onClick={() => setIframeModal({isOpen: false, url: '', title: ''})}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            {/* Contenu de l'iframe */}
-            <div className="flex-1 p-4">
-              <iframe
-                src={iframeModal.url}
-                className="w-full h-full border-0 rounded"
-                title={iframeModal.title}
-                allowFullScreen
-              />
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }

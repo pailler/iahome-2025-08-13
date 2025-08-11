@@ -261,7 +261,7 @@ export class EmailService {
               
               <!-- CTA -->
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://home.regispailler.fr'}" 
+                <a href="https://iahome.fr" 
                    style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
                   Accéder à mon compte
                 </a>
@@ -356,7 +356,7 @@ export class EmailService {
               
               <!-- CTA -->
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://home.regispailler.fr'}/dashboard" 
+                <a href="https://iahome.fr/dashboard" 
                    style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
                   Accéder à mon espace premium
                 </a>
@@ -366,13 +366,13 @@ export class EmailService {
               <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 25px 0;">
                 <h4 style="margin: 0 0 15px 0; color: #374151; font-size: 16px;">Liens utiles</h4>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                  <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://home.regispailler.fr'}/templates" 
+                  <a href="https://iahome.fr/templates" 
                      style="color: #10b981; text-decoration: none; font-size: 14px;">📋 Templates IA</a>
-                  <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://home.regispailler.fr'}/community" 
+                                      <a href="https://iahome.fr/community" 
                      style="color: #10b981; text-decoration: none; font-size: 14px;">👥 Communauté</a>
-                  <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://home.regispailler.fr'}/support" 
+                                      <a href="https://iahome.fr/support" 
                      style="color: #10b981; text-decoration: none; font-size: 14px;">🆘 Support</a>
-                  <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://home.regispailler.fr'}/docs" 
+                                      <a href="https://iahome.fr/docs" 
                      style="color: #10b981; text-decoration: none; font-size: 14px;">📖 Documentation</a>
                 </div>
               </div>
@@ -472,7 +472,7 @@ export class EmailService {
               
               <!-- CTA -->
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://home.regispailler.fr'}/checkout" 
+                <a href="https://iahome.fr/checkout" 
                    style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
                   Réessayer le paiement
                 </a>
@@ -508,6 +508,41 @@ export class EmailService {
     };
 
     return await this.sendEmail(emailData);
+  }
+
+  async sendMagicLinkEmail(
+    email: string,
+    moduleName: string,
+    magicLinkUrl: string,
+    expiresAt: Date
+  ): Promise<boolean> {
+    const subject = `Accès à ${moduleName} - Magic Link`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2563eb;">Accès à ${moduleName}</h2>
+        <p>Bonjour,</p>
+        <p>Vous avez demandé un accès temporaire au module <strong>${moduleName}</strong>.</p>
+        <p>Cliquez sur le lien ci-dessous pour accéder au module :</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${magicLinkUrl}" 
+             style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+            Accéder au module
+          </a>
+        </div>
+        <p><strong>Ce lien expire le :</strong> ${expiresAt.toLocaleString('fr-FR')}</p>
+        <p>Si vous n'avez pas demandé cet accès, vous pouvez ignorer cet email.</p>
+        <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
+        <p style="color: #6b7280; font-size: 14px;">
+          Cet email a été envoyé automatiquement par IAHome.
+        </p>
+      </div>
+    `;
+
+    return await this.sendEmail({
+      to: email,
+      subject,
+      html
+    });
   }
 
   async sendSubscriptionDeleted(
@@ -571,7 +606,7 @@ export class EmailService {
               
               <!-- CTA -->
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://home.regispailler.fr'}/reactivate" 
+                <a href="https://iahome.fr/reactivate" 
                    style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
                   Réactiver mon abonnement
                 </a>

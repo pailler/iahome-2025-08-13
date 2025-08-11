@@ -23,29 +23,8 @@ export default function ProxyPage({ params }: { params: Promise<{ module: string
       try {
         console.log('🔍 Configuration de l\'iframe pour:', module);
         
-
-          
-                     // Utiliser directement l'URL du proxy qui gère l'authentification
-           const proxyUrl = `https://home.regispailler.fr/api/proxy-module/?token=${token}&module=${module}`;
-          
-          console.log('✅ URL iframe configurée:', proxyUrl);
-          setIframeUrl(proxyUrl);
-          return;
-        }
-        
-        // Pour les autres modules, vérifier l'abonnement
-        const response = await fetch(`/api/check-subscription?module=${module}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error('Accès non autorisé à ce module');
-        }
-        
-                 // Utiliser l'URL du proxy qui gère l'authentification
-         const proxyUrl = `https://home.regispailler.fr/api/proxy-module/?token=${token}&module=${module}`;
+        // Utiliser directement l'URL du proxy qui gère l'authentification
+        const proxyUrl = `https://iahome.fr/api/proxy-module/?token=${token}&module=${module}`;
         
         console.log('✅ URL iframe configurée:', proxyUrl);
         setIframeUrl(proxyUrl);

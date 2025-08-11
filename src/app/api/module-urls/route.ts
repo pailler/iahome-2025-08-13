@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
 
     // Configuration des URLs des modules
     const moduleUrls: { [key: string]: string } = {
-      'IAmetube': 'https://metube.regispailler.fr',
+      'IAmetube': '/api/proxy-metube',
       // Ajouter d'autres modules ici quand ils seront disponibles
       // 'IAphoto': 'https://iaphoto.regispailler.fr',
       // 'IAvideo': 'https://iavideo.regispailler.fr',

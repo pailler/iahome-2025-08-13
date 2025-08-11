@@ -32,7 +32,7 @@ export default function RegisterPage() {
     return () => subscription.unsubscribe();
   }, []);
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setMessage('');
     

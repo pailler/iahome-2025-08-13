@@ -30,8 +30,55 @@ const protectedApiRoutes = [
   '/api/secure-proxy'
 ];
 
+// IPs autorisées pour l'accès direct
+const ALLOWED_IPS = [
+  '90.90.226.59', // Votre IP principale
+  '127.0.0.1',    // Localhost pour le développement
+  '::1',          // IPv6 localhost
+  'localhost'     // Localhost
+];
+
+// Routes à protéger
+const PROTECTED_ROUTES = [
+  '/api/proxy-ruinedfooocus',
+  '/ruinedfooocus',
+  '/gradio-access'
+];
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const url = new URL(request.url);
+
+  // Ne jamais interférer avec la racine
+  if (pathname === '/') {
+    return NextResponse.next();
+  }
+
+  // Réécritures rapides pour Socket.IO (alias sans point)
+  if (pathname.startsWith('/api/proxy-metubesocket.io')) {
+    url.pathname = pathname.replace('/api/proxy-metubesocket.io', '/api/proxy-metubesocketio');
+    return NextResponse.rewrite(url);
+  }
+  if (pathname.startsWith('/socket.io')) {
+    // Rediriger les appels Engine.IO par défaut vers notre proxy alias
+    url.pathname = '/api/proxy-metubesocketio';
+    return NextResponse.rewrite(url);
+  }
+
+  // Réécriture des appels API absolus émis par l'UI Metube intégrée
+  // Exemple: /api/add, /api/jobs, etc. vers notre proxy /api/proxy-metube/api/...
+  if (
+    pathname.startsWith('/api/') &&
+    !pathname.startsWith('/api/proxy-') &&
+    !pathname.startsWith('/api/assets/') &&
+    !pathname.startsWith('/api/version')
+  ) {
+    const referer = request.headers.get('referer') || '';
+    if (referer.includes('/api/proxy-metube')) {
+      url.pathname = `/api/proxy-metube${pathname}`;
+      return NextResponse.rewrite(url);
+    }
+  }
   
   console.log('🔐 Middleware - Vérification de la route:', pathname);
 
@@ -153,6 +200,36 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Vérifier si la route est protégée
+  const isProtectedRouteIP = PROTECTED_ROUTES.some(route => 
+    pathname.startsWith(route)
+  );
+  
+  if (isProtectedRouteIP) {
+        // Récupérer l'IP du client
+    const clientIP = request.headers.get('x-forwarded-for')?.split(',')[0] ||
+                    request.headers.get('x-real-ip') ||
+                    'unknown';
+    
+    console.log(`🔒 Tentative d'accès à ${pathname} depuis IP: ${clientIP}`);
+    
+    // Vérifier si l'IP est autorisée
+    const isAllowed = ALLOWED_IPS.includes(clientIP);
+    
+    if (!isAllowed) {
+      console.log(`❌ Accès refusé pour IP: ${clientIP}`);
+      
+      // Rediriger vers une page d'erreur ou d'authentification
+      const errorUrl = new URL('/access-denied', request.url);
+      errorUrl.searchParams.set('reason', 'ip_restricted');
+      errorUrl.searchParams.set('requested_path', pathname);
+      
+      return NextResponse.redirect(errorUrl);
+    }
+    
+    console.log(`✅ Accès autorisé pour IP: ${clientIP}`);
+  }
+
   console.log('✅ Authentification et autorisation validées');
   return NextResponse.next();
 }
@@ -164,13 +241,15 @@ function getModuleNameFromPath(pathname: string): string | null {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
+    '/api/proxy-metubesocket.io/:path*',
+    '/socket.io/:path*',
+    '/api/proxy-metube/:path*',
+    '/api/proxy-librespeed/:path*',
+    '/modules-access',
+    '/secure-access',
+    '/module/:path*',
+    '/api/proxy-ruinedfooocus/:path*',
+    '/ruinedfooocus/:path*',
+    '/gradio-access/:path*'
   ],
 }; 

@@ -8,9 +8,10 @@ interface Module {
   description: string;
   subtitle?: string;
   category: string;
-  categories?: string[];
   price: number;
   youtube_url?: string;
+  url?: string; // Nouveau champ pour l'URL d'accès
+  image_url?: string; // Nouveau champ pour l'URL de l'image
   created_at?: string;
   updated_at?: string;
 }
@@ -99,9 +100,10 @@ export function UnifiedModuleModal({
         description: module.description || '',
         subtitle: module.subtitle || '',
         category: module.category || '',
-        categories: module.categories || [],
         price: module.price || 0,
-        youtube_url: module.youtube_url || ''
+        youtube_url: module.youtube_url || '',
+        url: module.url || '',
+        image_url: module.image_url || ''
       };
     }
     
@@ -110,35 +112,43 @@ export function UnifiedModuleModal({
       description: '',
       subtitle: '',
       category: '',
-      categories: [],
       price: 0,
-      youtube_url: ''
+      youtube_url: '',
+      url: '',
+      image_url: ''
     };
   });
 
   // Mettre à jour le formulaire quand le module change
   useEffect(() => {
-    if (module) {
-      setFormData({
-        title: module.title || '',
-        description: module.description || '',
-        subtitle: module.subtitle || '',
-        category: module.category || '',
-        categories: module.categories || [],
-        price: module.price || 0,
-        youtube_url: module.youtube_url || ''
-      });
-    } else {
-      setFormData({
-        title: '',
-        description: '',
-        subtitle: '',
-        category: '',
-        categories: [],
-        price: 0,
-        youtube_url: ''
-      });
-    }
+    console.log('🔍 ModuleModals - Module reçu:', module);
+    console.log('🔍 ModuleModals - ID du module:', module?.id);
+    
+         if (module) {
+       console.log('✅ ModuleModals - Configuration du formulaire avec le module');
+       setFormData({
+         title: module.title || '',
+         description: module.description || '',
+         subtitle: module.subtitle || '',
+         category: module.category || '',
+         price: module.price || 0,
+         youtube_url: module.youtube_url || '',
+         url: module.url || '',
+         image_url: module.image_url || ''
+       });
+     } else {
+       console.log('🔄 ModuleModals - Configuration du formulaire vide');
+       setFormData({
+         title: '',
+         description: '',
+         subtitle: '',
+         category: '',
+         price: 0,
+         youtube_url: '',
+         url: '',
+         image_url: ''
+       });
+     }
   }, [module]);
 
   // Gérer l'édition d'un token
@@ -229,44 +239,18 @@ export function UnifiedModuleModal({
                     <option value="IA BUREAUTIQUE">IA BUREAUTIQUE</option>
                     <option value="IA PHOTO">IA PHOTO</option>
                     <option value="IA VIDEO">IA VIDEO</option>
-                    <option value="IA MAO">IA MAO</option>
+                    <option value="IA AUDIO">IA AUDIO</option>
                     <option value="IA PROMPTS">IA PROMPTS</option>
                     <option value="IA MARKETING">IA MARKETING</option>
                     <option value="IA DESIGN">IA DESIGN</option>
                     <option value="Web Tools">Web Tools</option>
                     <option value="IA FORMATION">IA FORMATION</option>
                     <option value="IA DEVELOPPEMENT">IA DEVELOPPEMENT</option>
-                    <option value="BUILDING BLOCKS">BUILDING BLOCKS</option>
+            
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Catégories multiples
-                  </label>
-                  <div className="space-y-2">
-                    {[
-                      'IA ASSISTANT', 'IA BUREAUTIQUE', 'IA PHOTO', 'IA VIDEO', 
-                      'IA MAO', 'IA PROMPTS', 'IA MARKETING', 'IA DESIGN', 
-                      'Web Tools', 'IA FORMATION', 'IA DEVELOPPEMENT', 'BUILDING BLOCKS'
-                    ].map((cat) => (
-                      <label key={cat} className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={formData.categories?.includes(cat) || false}
-                          onChange={(e) => {
-                            const newCategories = e.target.checked
-                              ? [...(formData.categories || []), cat]
-                              : (formData.categories || []).filter(c => c !== cat);
-                            setFormData({...formData, categories: newCategories});
-                          }}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-sm text-gray-700">{cat}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
+
               </div>
             </div>
 
@@ -287,25 +271,53 @@ export function UnifiedModuleModal({
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    URL YouTube (optionnel)
-                  </label>
-                  <input
-                    type="url"
-                    value={formData.youtube_url || ''}
-                    onChange={(e) => setFormData({...formData, youtube_url: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                    placeholder="https://www.youtube.com/watch?v=..."
-                  />
-                </div>
+                                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                     URL YouTube (optionnel)
+                   </label>
+                   <input
+                     type="url"
+                     value={formData.youtube_url || ''}
+                     onChange={(e) => setFormData({...formData, youtube_url: e.target.value})}
+                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                     placeholder="https://www.youtube.com/watch?v=..."
+                   />
+                 </div>
+
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                     URL de l'image (optionnel)
+                   </label>
+                   <input
+                     type="url"
+                     value={formData.image_url || ''}
+                     onChange={(e) => setFormData({...formData, image_url: e.target.value})}
+                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                     placeholder="https://example.com/image.jpg"
+                   />
+                   <p className="mt-1 text-sm text-gray-500">
+                     URL de l'image qui apparaîtra sur la page d'accueil
+                   </p>
+                   {formData.image_url && (
+                     <div className="mt-2">
+                       <img
+                         src={formData.image_url}
+                         alt="Aperçu"
+                         className="h-20 w-20 rounded-lg object-cover border"
+                         onError={(e) => {
+                           e.currentTarget.style.display = 'none';
+                         }}
+                       />
+                     </div>
+                   )}
+                 </div>
               </div>
             </div>
 
             {/* Section Prix et accès */}
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <h3 className="text-lg font-semibold text-yellow-900 mb-4">💰 Prix et accès</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Prix (en euros)
@@ -319,6 +331,22 @@ export function UnifiedModuleModal({
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
                     placeholder="0.00"
                   />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    URL d'accès
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.url || ''}
+                    onChange={(e) => setFormData({...formData, url: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    placeholder="https://nouveau-module.regispailler.fr"
+                  />
+                  <p className="mt-1 text-sm text-gray-500">
+                    URL de l'application sur votre réseau local
+                  </p>
                 </div>
               </div>
             </div>

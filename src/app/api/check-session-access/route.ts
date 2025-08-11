@@ -12,45 +12,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Vérifier si c'est un module avec limitation de temps
-    const isTimeLimitedModule = moduleName === 'IAmetube' || moduleName === 'Metube';
-    
-    if (!isTimeLimitedModule) {
-      // Pour les modules sans limitation, vérifier seulement l'abonnement
-      const { data: subscriptions, error: subError } = await supabase
-        .from('user_subscriptions')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('module_name', moduleName)
-        .eq('status', 'active')
-        .gt('end_date', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1);
+    // Vérifier l'abonnement pour tous les modules
+    const { data: subscriptions, error: subError } = await supabase
+      .from('user_subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('module_name', moduleName)
+      .eq('status', 'active')
+      .gt('end_date', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1);
 
-      if (subError || !subscriptions || subscriptions.length === 0) {
-        return NextResponse.json(
-          { 
-            canAccess: false, 
-            reason: 'Aucun abonnement actif',
-            timeRemaining: 0 
-          },
-          { status: 403 }
-        );
-      }
-
-      return NextResponse.json({
-        canAccess: true,
-        reason: 'Accès illimité',
-        timeRemaining: null
-      });
-    } else {
-      // Pour les modules avec limitation de temps (comme Metube), permettre l'accès temporaire
-      return NextResponse.json({
-        canAccess: true,
-        reason: 'Session à créer',
-        timeRemaining: 720 // 12 heures en minutes
-      });
+    if (subError || !subscriptions || subscriptions.length === 0) {
+      return NextResponse.json(
+        { 
+          canAccess: false, 
+          reason: 'Aucun abonnement actif',
+          timeRemaining: 0 
+        },
+        { status: 403 }
+      );
     }
+
+    return NextResponse.json({
+      canAccess: true,
+      reason: 'Accès illimité',
+      timeRemaining: null
+    });
 
 
 

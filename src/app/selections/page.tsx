@@ -1,12 +1,12 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../../utils/supabaseClient';
 import StripeCheckout from '../../components/StripeCheckout';
 import Link from 'next/link';
 import Header from '../../components/Header';
 
-export default function SelectionsPage() {
+function SelectionsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [session, setSession] = useState<any>(null);
@@ -19,7 +19,7 @@ export default function SelectionsPage() {
   // Fonction pour obtenir l'URL d'accès d'un module
   const getModuleAccessUrl = (moduleName: string) => {
     const moduleUrls: { [key: string]: string } = {
-      'Metube': 'https://metube.regispailler.fr',
+      'Metube': '/api/proxy-metube',
       // Ajouter d'autres modules ici quand ils seront disponibles
       // 'IAphoto': 'https://iaphoto.regispailler.fr',
       // 'IAvideo': 'https://iavideo.regispailler.fr',
@@ -69,16 +69,22 @@ export default function SelectionsPage() {
       
       try {
         const { data, error } = await supabase
-          .from('user_subscriptions')
-          .select('module_name, end_date')
+          .from('module_access')
+          .select(`
+            module_id,
+            expires_at,
+            modules(title)
+          `)
           .eq('user_id', user.id)
-          .eq('status', 'active')
-          .gt('end_date', new Date().toISOString());
+          .eq('access_type', 'active')
+          .gt('expires_at', new Date().toISOString());
         
         if (!error && data) {
           const subscriptions: {[key: string]: boolean} = {};
           data.forEach(sub => {
-            subscriptions[sub.module_name] = true;
+            if (sub.modules && sub.modules.length > 0) {
+              subscriptions[sub.modules[0].title] = true;
+            }
           });
           setUserSubscriptions(subscriptions);
           console.log('✅ Sélections actives:', subscriptions);
@@ -170,7 +176,7 @@ export default function SelectionsPage() {
                     <li key={idx} className="border border-blue-100 rounded-lg p-4 flex flex-col gap-1 bg-blue-50">
                       <div className="font-semibold text-blue-900">{module.title || 'Module sans titre'}</div>
                       {module.description && <div className="text-blue-900/80 text-sm" dangerouslySetInnerHTML={{ __html: module.description }} />}
-                      {module.category && <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded w-fit mb-1">{module.category.toUpperCase().replace('BUILDING BLOCKS', 'IA ASSISTANT').replace('AI TOOLS', 'IA ASSISTANT').replace('MEDIA', 'IA ASSISTANT').replace('OUTILS', 'IA ASSISTANT').replace('TEMPLATES', 'IA ASSISTANT').replace('IA OUTILS', 'IA ASSISTANT').replace('MARKETING', 'IA MARKETING').replace('DESIGN', 'IA DESIGN')}</span>}
+                      {module.category && <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded w-fit mb-1">{module.category.toUpperCase().replace('AI TOOLS', 'IA ASSISTANT').replace('MEDIA', 'IA ASSISTANT').replace('OUTILS', 'IA ASSISTANT').replace('TEMPLATES', 'IA ASSISTANT').replace('IA OUTILS', 'IA ASSISTANT').replace('MARKETING', 'IA MARKETING').replace('DESIGN', 'IA DESIGN')}</span>}
                       {module.price && <div className="text-blue-900 font-bold">Prix : {module.price} €</div>}
                       
                       {/* Bouton d'accès direct pour les modules avec abonnement actif */}
@@ -183,7 +189,7 @@ export default function SelectionsPage() {
                                   {
                                                               // Accès direct pour les autres modules
                               const moduleUrls: { [key: string]: string } = {
-                                'Metube': 'https://metube.regispailler.fr',
+                                'Metube': '/api/proxy-metube',
                                 'IAphoto': 'https://iaphoto.regispailler.fr',
                                 'IAvideo': 'https://iavideo.regispailler.fr',
                               };
@@ -278,7 +284,7 @@ export default function SelectionsPage() {
                   <li key={idx} className="border border-blue-100 rounded-lg p-4 flex flex-col gap-1 bg-blue-50">
                     <div className="font-semibold text-blue-900">{module.title || 'Module sans titre'}</div>
                     {module.description && <div className="text-blue-900/80 text-sm" dangerouslySetInnerHTML={{ __html: module.description }} />}
-                    {module.category && <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded w-fit mb-1">{module.category.toUpperCase().replace('BUILDING BLOCKS', 'IA ASSISTANT').replace('AI TOOLS', 'IA ASSISTANT').replace('MEDIA', 'IA ASSISTANT').replace('OUTILS', 'IA ASSISTANT').replace('TEMPLATES', 'IA ASSISTANT').replace('IA OUTILS', 'IA ASSISTANT').replace('MARKETING', 'IA MARKETING').replace('DESIGN', 'IA DESIGN')}</span>}
+                    {module.category && <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded w-fit mb-1">{module.category.toUpperCase().replace('AI TOOLS', 'IA ASSISTANT').replace('MEDIA', 'IA ASSISTANT').replace('OUTILS', 'IA ASSISTANT').replace('TEMPLATES', 'IA ASSISTANT').replace('IA OUTILS', 'IA ASSISTANT').replace('MARKETING', 'IA MARKETING').replace('DESIGN', 'IA DESIGN')}</span>}
                     {module.price && <div className="text-blue-900 font-bold">Prix : {module.price} €</div>}
                     
                     {/* Bouton d'accès direct pour les modules avec abonnement actif */}
@@ -295,7 +301,7 @@ export default function SelectionsPage() {
                             } else {
                               // Accès direct pour les autres modules
                               const moduleUrls: { [key: string]: string } = {
-                                'IAmetube': 'https://metube.regispailler.fr',
+                                'IAmetube': '/api/proxy-metube',
                                 'IAphoto': 'https://iaphoto.regispailler.fr',
                                 'IAvideo': 'https://iavideo.regispailler.fr',
                               };
@@ -374,5 +380,20 @@ export default function SelectionsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SelectionsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-blue-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-blue-900">Chargement...</p>
+        </div>
+      </div>
+    }>
+      <SelectionsContent />
+    </Suspense>
   );
 } 

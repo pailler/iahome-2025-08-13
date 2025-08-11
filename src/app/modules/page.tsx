@@ -78,7 +78,7 @@ export default function ModulesPage() {
       id: 'metube',
       name: 'IAmetube',
       description: 'Téléchargement et gestion de vidéos YouTube',
-      url: 'https://metube.regispailler.fr',
+              url: '/api/proxy-metube',
       icon: '📺',
       color: 'bg-blue-500 hover:bg-blue-600',
       status: 'active'

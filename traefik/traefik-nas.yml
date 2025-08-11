@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik-nas
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Dashboard Traefik
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./letsencrypt:/letsencrypt
+      - ./dynamic:/etc/traefik/dynamic
+    networks:
+      - traefik-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.iahome.fr`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+      - "traefik.http.routers.traefik.middlewares=auth"
+      - "traefik.http.middlewares.auth.basicauth.users=admin:$$2y$$10$$hashed_password_here"
+
+  iahome-app:
+    image: iahome-iahome-app:latest
+    container_name: iahome-app-nas
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_APP_URL=https://iahome.fr
+      - NEXTAUTH_URL=https://iahome.fr
+    volumes:
+      - ./env.production.nas:/app/.env.production
+    networks:
+      - traefik-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.iahome.rule=Host(`iahome.fr`) || Host(`www.iahome.fr`)"
+      - "traefik.http.routers.iahome.entrypoints=websecure"
+      - "traefik.http.routers.iahome.tls.certresolver=letsencrypt"
+      - "traefik.http.services.iahome.loadbalancer.server.port=3000"
+      - "traefik.http.routers.iahome.middlewares=redirect-www"
+      - "traefik.http.middlewares.redirect-www.redirectregex.regex=^https://www\\.(.*)"
+      - "traefik.http.middlewares.redirect-www.redirectregex.replacement=https://$${1}"
+
+networks:
+  traefik-network:
+    external: true
+
+
+

@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  iahome-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: iahome-app-local
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+    env_file:
+      - .env.local
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - iahome-network
+    labels:
+      - "traefik.enable=false"
+
+networks:
+  iahome-network:
+    driver: bridge 

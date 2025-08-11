@@ -1,0 +1,148 @@
+http:
+  middlewares:
+    # Redirection HTTP vers HTTPS
+    redirect-to-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+    
+    # Redirection www vers apex
+    redirect-www-to-apex:
+      redirectRegex:
+        regex: "^https?://www\\.iahome\\.fr/(.*)"
+        replacement: "https://iahome.fr/$1"
+        permanent: true
+    
+    # En-têtes de sécurité
+    security-headers:
+      headers:
+        # HSTS - Force HTTPS
+        customRequestHeaders:
+          X-Forwarded-Proto: "https"
+        customResponseHeaders:
+          Strict-Transport-Security: "max-age=31536000; includeSubDomains; preload"
+          X-Content-Type-Options: "nosniff"
+          X-Frame-Options: "DENY"
+          X-XSS-Protection: "1; mode=block"
+          Referrer-Policy: "strict-origin-when-cross-origin"
+          Permissions-Policy: "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+          Content-Security-Policy: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://api.stripe.com https://*.supabase.co https://www.google-analytics.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self';"
+    
+    # Rate limiting pour l'API
+    api-rate-limit:
+      rateLimit:
+        burst: 20
+        average: 10
+    
+    # Rate limiting pour l'authentification
+    auth-rate-limit:
+      rateLimit:
+        burst: 5
+        average: 1
+    
+    # Protection contre les attaques par force brute
+    brute-force-protection:
+      rateLimit:
+        burst: 3
+        average: 1
+        period: "1m"
+    
+    # Compression
+    compress:
+      compress: {}
+    
+    # Cache pour les assets statiques
+    static-cache:
+      headers:
+        customResponseHeaders:
+          Cache-Control: "public, max-age=31536000, immutable"
+    
+    # Cache pour les pages
+    page-cache:
+      headers:
+        customResponseHeaders:
+          Cache-Control: "public, max-age=3600"
+
+  routers:
+    # Redirection HTTP www vers HTTPS apex
+    iahome-www-http:
+      rule: "Host(`www.iahome.fr`)"
+      entryPoints:
+        - web
+      service: iahome-app
+      middlewares:
+        - redirect-www-to-apex
+    
+    # Redirection HTTP apex vers HTTPS apex
+    iahome-apex-http:
+      rule: "Host(`iahome.fr`)"
+      entryPoints:
+        - web
+      service: iahome-app
+      middlewares:
+        - redirect-to-https
+    
+    # Configuration HTTPS principale
+    iahome-secure:
+      rule: "Host(`iahome.fr`)"
+      entryPoints:
+        - websecure
+      service: iahome-app
+      tls:
+        certResolver: letsencrypt
+      middlewares:
+        - security-headers
+        - compress
+    
+    # API avec rate limiting
+    iahome-api:
+      rule: "Host(`iahome.fr`) && PathPrefix(`/api/`)"
+      entryPoints:
+        - websecure
+      service: iahome-app
+      tls:
+        certResolver: letsencrypt
+      middlewares:
+        - security-headers
+        - api-rate-limit
+        - compress
+    
+    # Authentification avec protection renforcée
+    iahome-auth:
+      rule: "Host(`iahome.fr`) && (PathPrefix(`/login`) || PathPrefix(`/register`) || PathPrefix(`/auth`))"
+      entryPoints:
+        - websecure
+      service: iahome-app
+      tls:
+        certResolver: letsencrypt
+      middlewares:
+        - security-headers
+        - auth-rate-limit
+        - brute-force-protection
+        - compress
+    
+    # Assets statiques avec cache
+    iahome-static:
+      rule: "Host(`iahome.fr`) && (PathPrefix(`/_next/static/`) || PathPrefix(`/static/`))"
+      entryPoints:
+        - websecure
+      service: iahome-app
+      tls:
+        certResolver: letsencrypt
+      middlewares:
+        - security-headers
+        - static-cache
+        - compress
+
+  services:
+    iahome-app:
+      loadBalancer:
+        servers:
+          - url: "http://iahome-app:3000"
+        passHostHeader: true
+        healthCheck:
+          path: "/api/health"
+          interval: "30s"
+          timeout: "5s"
+          headers:
+            User-Agent: "Traefik Health Check"

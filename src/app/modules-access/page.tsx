@@ -13,7 +13,7 @@ const MODULES: ModuleConfig[] = [
   {
     name: 'IA Metube',
     key: 'iametube',
-    url: 'https://iametube.regispailler.fr',
+          url: '/api/proxy-metube',
     icon: '🎵',
     color: 'from-green-600 to-emerald-600'
   }

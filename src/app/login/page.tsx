@@ -11,7 +11,17 @@ export default function LoginPage() {
   const [session, setSession] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [redirectUrl, setRedirectUrl] = useState<string>('');
   const router = useRouter();
+
+  // Récupérer l'URL de redirection depuis les paramètres de l'URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const redirect = urlParams.get('redirect');
+    if (redirect) {
+      setRedirectUrl(redirect);
+    }
+  }, []);
 
   // Gérer la session et l'utilisateur
   useEffect(() => {
@@ -81,9 +91,19 @@ export default function LoginPage() {
         console.log('Rôle utilisateur:', userRole);
         setMessage(`✅ Connexion réussie ! Rôle: ${userRole}`);
         
-        // Rediriger vers la page d'accueil
+        // Rediriger vers l'URL spécifiée ou la page d'accueil
         setTimeout(() => {
-          router.push('/');
+          if (redirectUrl) {
+            // Si c'est une URL externe, rediriger directement
+            if (redirectUrl.startsWith('http')) {
+              window.location.href = redirectUrl;
+            } else {
+              // Si c'est un chemin relatif, utiliser le router
+              router.push(redirectUrl);
+            }
+          } else {
+            router.push('/');
+          }
         }, 1000);
       }
     }
@@ -127,6 +147,11 @@ export default function LoginPage() {
           </h1>
           <p className="text-gray-600">
             {isRegister ? "Rejoignez IAHome pour accéder aux outils IA" : "Connectez-vous à votre compte IAHome"}
+            {redirectUrl && (
+              <span className="block text-sm text-blue-600 mt-1">
+                Vous serez redirigé vers {redirectUrl} après connexion
+              </span>
+            )}
           </p>
         </div>
         

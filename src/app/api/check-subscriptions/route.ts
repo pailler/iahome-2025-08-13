@@ -6,60 +6,63 @@ export async function GET(request: NextRequest) {
     console.log('🔍 API check-subscriptions appelée');
     
     const { searchParams } = new URL(request.url);
+    const moduleName = searchParams.get('module');
     const userId = searchParams.get('userId');
 
+    console.log('🔍 Paramètres reçus:', { moduleName, userId });
+
+    // Validation des paramètres
     if (!userId) {
+      console.error('❌ Paramètres manquants');
       return NextResponse.json(
-        { error: 'Paramètre userId requis' },
+        { error: 'Paramètres manquants: userId requis' },
         { status: 400 }
       );
     }
 
-    // Vérifier tous les abonnements de l'utilisateur
-    const { data: allSubscriptions, error: allError } = await supabase
-      .from('user_subscriptions')
-      .select('*')
+    // Vérifier les accès modules actifs
+    let query = supabase
+      .from('module_access')
+      .select(`
+        id,
+        user_id,
+        module_id,
+        access_type,
+        expires_at,
+        is_active,
+        created_at,
+        metadata
+      `)
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .eq('is_active', true);
 
-    if (allError) {
-      console.error('❌ Erreur récupération abonnements:', allError);
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('❌ Erreur vérification accès modules:', error);
       return NextResponse.json(
-        { error: 'Erreur lors de la récupération des abonnements' },
+        { error: 'Erreur lors de la vérification des accès modules' },
         { status: 500 }
       );
     }
 
-    // Vérifier les abonnements actifs
-    const { data: activeSubscriptions, error: activeError } = await supabase
-      .from('user_subscriptions')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('status', 'active')
-      .gt('end_date', new Date().toISOString())
-      .order('created_at', { ascending: false });
+    // Filtrer les accès non expirés
+    const activeAccess = data ? data.filter(access => {
+      if (!access.expires_at) return true; // Accès permanent
+      const isNotExpired = new Date(access.expires_at) > new Date();
+      return isNotExpired;
+    }) : [];
 
-    if (activeError) {
-      console.error('❌ Erreur récupération abonnements actifs:', activeError);
-      return NextResponse.json(
-        { error: 'Erreur lors de la récupération des abonnements actifs' },
-        { status: 500 }
-      );
-    }
-
-    console.log('✅ Abonnements trouvés:', {
-      total: allSubscriptions?.length || 0,
-      active: activeSubscriptions?.length || 0,
-      all: allSubscriptions,
-      active: activeSubscriptions
+    const hasActiveSubscription = activeAccess.length > 0;
+    console.log('✅ Résultat vérification:', { 
+      hasActiveSubscription, 
+      activeAccessCount: activeAccess.length
     });
 
     return NextResponse.json({
-      success: true,
-      totalSubscriptions: allSubscriptions?.length || 0,
-      activeSubscriptions: activeSubscriptions?.length || 0,
-      allSubscriptions: allSubscriptions || [],
-      activeSubscriptions: activeSubscriptions || []
+      hasActiveSubscription,
+      activeAccess: activeAccess,
+      totalActiveModules: activeAccess.length
     });
 
   } catch (error) {

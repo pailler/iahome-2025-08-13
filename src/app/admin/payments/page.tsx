@@ -215,7 +215,7 @@ export default function AdminPaymentsPage() {
           payment.currency,
           payment.status,
           payment.payment_method,
-          payment.user_subscriptions?.[0]?.module_name || '',
+          '', // Module name not available in payment data
           new Date(payment.created_at).toLocaleDateString('fr-FR')
         ])
       ].map(row => row.join(',')).join('\n');

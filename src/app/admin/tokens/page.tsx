@@ -11,8 +11,6 @@ interface TokenConfig {
   description: string;
   moduleId: string;
   moduleName: string;
-  userId?: string;
-  userEmail?: string;
   accessLevel: 'basic' | 'premium' | 'admin';
   expirationHours: number;
   permissions: string[];
@@ -24,7 +22,7 @@ interface TokenConfig {
 }
 
 interface Module {
-  id: string;
+  id: number;
   title: string;
   description: string;
   category: string;
@@ -146,6 +144,7 @@ export default function TokenManagementPage() {
       if (modulesError) {
         console.error('Erreur chargement modules:', modulesError);
       } else {
+        console.log('Modules chargés:', modulesData);
         setModules(modulesData || []);
       }
 
@@ -212,16 +211,16 @@ export default function TokenManagementPage() {
       } else {
         console.log('Tokens récupérés depuis la base de données:', tokensData);
         const dbTokens = (tokensData || []).map((token: any) => ({
-          id: token.id,
-          name: token.name,
-          description: token.description,
-          moduleId: token.module_id,
-          moduleName: token.modules?.title || 'Module inconnu',
+          id: token.id?.toString(),
+          name: token.name || 'Token sans nom',
+          description: token.description || '',
+          moduleId: token.module_id?.toString() || '',
+          moduleName: token.module_name || token.modules?.title || 'Module inconnu',
           accessLevel: token.access_level || 'premium',
           expirationHours: token.expiration_hours || 72,
           permissions: token.permissions || ['read', 'access'],
           isActive: token.is_active !== false,
-          maxUsage: token.max_usage,
+          maxUsage: token.max_usage || 100,
           currentUsage: token.current_usage || 0,
           createdAt: token.created_at,
           expiresAt: token.expires_at
@@ -238,55 +237,120 @@ export default function TokenManagementPage() {
 
   const handleCreateToken = async () => {
     try {
-      const selectedModule = modules.find(m => m.id === formData.moduleId);
+      // Validation des champs requis
+      if (!formData.name.trim()) {
+        alert('Le nom du token est requis');
+        return;
+      }
+      
+      if (!formData.moduleId) {
+        alert('Veuillez sélectionner un module');
+        return;
+      }
+      
+      if (formData.expirationHours <= 0) {
+        alert('La durée d\'expiration doit être supérieure à 0');
+        return;
+      }
+      
+      if (formData.maxUsage && formData.maxUsage <= 0) {
+        alert('Le nombre maximum d\'utilisations doit être supérieur à 0');
+        return;
+      }
+      
+      console.log('formData.moduleId:', formData.moduleId);
+      console.log('modules disponibles:', modules);
+      
+      const selectedModule = modules.find(m => m.id === parseInt(formData.moduleId));
+      
+      if (!selectedModule) {
+        console.log('Module non trouvé pour ID:', formData.moduleId);
+        alert('Veuillez sélectionner un module valide');
+        return;
+      }
+      
+      console.log('Module sélectionné:', selectedModule);
       
       // Calculer la date d'expiration
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + formData.expirationHours);
       
+      // Vérifier que le module_id existe dans la table modules
+      const { data: moduleCheck, error: moduleCheckError } = await supabase
+        .from('modules')
+        .select('id')
+        .eq('id', parseInt(formData.moduleId))
+        .single();
+
+      if (moduleCheckError || !moduleCheck) {
+        console.error('Module non trouvé dans la base de données:', moduleCheckError);
+        alert('Le module sélectionné n\'existe pas dans la base de données');
+        return;
+      }
+
       const tokenData = {
         name: formData.name,
         description: formData.description,
-        module_id: formData.moduleId,
+        module_id: parseInt(formData.moduleId),
+        module_name: selectedModule.title,
         access_level: formData.accessLevel,
-        expiration_hours: formData.expirationHours,
         permissions: formData.permissions,
         is_active: formData.isActive,
-        max_usage: formData.maxUsage,
+        max_usage: formData.maxUsage || 100,
         current_usage: 0,
         expires_at: expiresAt.toISOString()
       };
 
+      console.log('Données du token à insérer:', tokenData);
+
+      console.log('Tentative d\'insertion avec tokenData:', tokenData);
+      
+      // Tentative d'insertion simplifiée
       const { data, error } = await supabase
         .from('access_tokens')
-        .insert([tokenData])
-        .select()
-        .single();
+        .insert(tokenData)
+        .select();
+
+      console.log('Réponse Supabase - data:', data);
+      console.log('Réponse Supabase - error:', error);
 
       if (error) {
         console.error('Erreur création token:', error);
-        alert(`Erreur lors de la création du token: ${error.message}`);
-      } else {
+        console.error('Détails de l\'erreur:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        alert(`Erreur lors de la création du token: ${error.message || 'Erreur inconnue'}`);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        const insertedToken = data[0];
         const newToken = {
-          id: data.id,
-          name: data.name,
-          description: data.description,
-          moduleId: data.module_id,
-          moduleName: selectedModule?.title || 'Module inconnu',
-          accessLevel: data.access_level,
+          id: insertedToken.id,
+          name: insertedToken.name,
+          description: insertedToken.description,
+          moduleId: insertedToken.module_id?.toString() || '',
+          moduleName: insertedToken.module_name || selectedModule.title,
+          accessLevel: insertedToken.access_level,
           expirationHours: formData.expirationHours,
-          permissions: data.permissions,
-          isActive: data.is_active,
-          maxUsage: data.max_usage,
-          currentUsage: data.current_usage,
-          createdAt: data.created_at,
-          expiresAt: data.expires_at
+          permissions: insertedToken.permissions || [],
+          isActive: insertedToken.is_active,
+          maxUsage: insertedToken.max_usage,
+          currentUsage: insertedToken.current_usage || 0,
+          createdAt: insertedToken.created_at,
+          expiresAt: insertedToken.expires_at
         };
         
         setTokens([newToken, ...tokens]);
         setShowCreateForm(false);
         resetForm();
         alert('Token créé avec succès !');
+      } else {
+        console.error('Aucune donnée retournée après insertion');
+        alert('Erreur: Aucune donnée retournée après insertion');
       }
     } catch (error) {
       console.error('Erreur création token:', error);
@@ -298,7 +362,33 @@ export default function TokenManagementPage() {
     if (!editingToken?.id) return;
     
     try {
+      // Validation des champs requis
+      if (!formData.name.trim()) {
+        alert('Le nom du token est requis');
+        return;
+      }
+      
+      if (!formData.moduleId) {
+        alert('Veuillez sélectionner un module');
+        return;
+      }
+      
+      if (formData.expirationHours <= 0) {
+        alert('La durée d\'expiration doit être supérieure à 0');
+        return;
+      }
+      
+      if (formData.maxUsage && formData.maxUsage <= 0) {
+        alert('Le nombre maximum d\'utilisations doit être supérieur à 0');
+        return;
+      }
+      
       const selectedModule = modules.find(m => m.id === formData.moduleId);
+      
+      if (!selectedModule) {
+        alert('Veuillez sélectionner un module valide');
+        return;
+      }
       
       // Calculer la nouvelle date d'expiration
       const expiresAt = new Date();
@@ -307,14 +397,16 @@ export default function TokenManagementPage() {
       const updateData = {
         name: formData.name,
         description: formData.description,
-        module_id: formData.moduleId,
+        module_id: parseInt(formData.moduleId),
+        module_name: selectedModule.title,
         access_level: formData.accessLevel,
-        expiration_hours: formData.expirationHours,
         permissions: formData.permissions,
         is_active: formData.isActive,
-        max_usage: formData.maxUsage,
+        max_usage: formData.maxUsage || 100,
         expires_at: expiresAt.toISOString()
       };
+
+      console.log('Données du token à mettre à jour:', updateData);
 
       const { data, error } = await supabase
         .from('access_tokens')
@@ -326,16 +418,19 @@ export default function TokenManagementPage() {
       if (error) {
         console.error('Erreur mise à jour token:', error);
         alert(`Erreur lors de la mise à jour du token: ${error.message}`);
-      } else {
+        return;
+      }
+
+      if (data) {
         const updatedToken = {
           id: data.id,
           name: data.name,
           description: data.description,
-          moduleId: data.module_id,
-          moduleName: selectedModule?.title || 'Module inconnu',
+          moduleId: data.module_id?.toString() || '',
+          moduleName: data.module_name || selectedModule.title,
           accessLevel: data.access_level,
           expirationHours: formData.expirationHours,
-          permissions: data.permissions,
+          permissions: data.permissions || [],
           isActive: data.is_active,
           maxUsage: data.max_usage,
           currentUsage: data.current_usage,
@@ -474,8 +569,8 @@ export default function TokenManagementPage() {
       <Header />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
         <Breadcrumb items={[
-          { name: 'Administration', href: '/admin' },
-          { name: 'Gestion des Tokens', href: '/admin/tokens' }
+          { label: 'Administration', href: '/admin' },
+          { label: 'Gestion des Tokens', href: '/admin/tokens' }
         ]} />
 
         <div className="mb-8">
@@ -541,10 +636,10 @@ export default function TokenManagementPage() {
                     onChange={(e) => setFormData({...formData, moduleId: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">Sélectionner un module</option>
+                    <option value="">Sélectionner un module ({modules.length} modules disponibles)</option>
                     {modules.map(module => (
-                      <option key={module.id} value={module.id}>
-                        {module.title}
+                      <option key={module.id} value={module.id.toString()}>
+                        {module.title} (ID: {module.id})
                       </option>
                     ))}
                   </select>

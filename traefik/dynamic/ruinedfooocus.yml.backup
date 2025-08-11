@@ -1,0 +1,59 @@
+http:
+  middlewares:
+    rf-whitelist:
+      ipWhiteList:
+        sourceRange:
+          - 90.90.226.59/32
+    rf-redirect-iahome:
+      redirectRegex:
+        regex: "^https?://ruinedfooocus\\.regispailler\\.fr/(.*)"
+        replacement: "https://ruinedfooocus.iahome.fr/$1"
+        permanent: true
+    rf-redirect-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
+  routers:
+    rf-block-router:
+      rule: "Host(`ruinedfooocus.regispailler.fr`)"
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+      service: rf-deny-service
+      middlewares:
+        - rf-whitelist
+        - rf-redirect-iahome
+
+    rf-matrix-router:
+      rule: "Host(`ruinedfooocus.iahome.fr`)"
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+      service: rf-matrix-service
+
+    rf-matrix-router-http:
+      rule: "Host(`ruinedfooocus.iahome.fr`)"
+      entryPoints:
+        - web
+      service: rf-matrix-service
+      middlewares:
+        - rf-redirect-https
+
+  services:
+    rf-deny-service:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:65535" # inexistant -> 502 par défaut
+        passHostHeader: true
+
+    rf-matrix-service:
+      loadBalancer:
+        servers:
+          - url: "http://ruinedfooocus:7870"
+        passHostHeader: true
+
+
+

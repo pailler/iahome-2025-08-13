@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     // Configuration des URLs de base pour chaque module
           const moduleUrls: { [key: string]: string } = {
-        'Metube': 'https://metube.regispailler.fr', // Utiliser l'adresse publique
+        'Metube': '/api/proxy-metube', // Utiliser le proxy sécurisé
       'IAphoto': 'https://iaphoto.regispailler.fr',
       'IAvideo': 'https://iavideo.regispailler.fr',
     };

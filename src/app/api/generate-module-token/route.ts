@@ -4,8 +4,10 @@ import jwt from 'jsonwebtoken';
 
 interface TokenGenerationRequest {
   moduleId: string;
-  userId: string;
-  paymentId: string;
+  moduleTitle?: string;
+  targetUrl?: string;
+  userId?: string;
+  paymentId?: string;
   accessLevel?: 'basic' | 'premium' | 'admin';
   expirationHours?: number;
   maxUsage?: number;
@@ -14,16 +16,31 @@ interface TokenGenerationRequest {
 export async function POST(request: NextRequest) {
   try {
     const body: TokenGenerationRequest = await request.json();
-    const { moduleId, userId, paymentId, accessLevel = 'premium', expirationHours = 72, maxUsage = 100 } = body;
+    const { moduleId, moduleTitle, targetUrl, userId: bodyUserId, paymentId, accessLevel = 'premium', expirationHours = 72, maxUsage = 100 } = body;
+
+    // Récupérer l'utilisateur depuis le token d'authentification
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Token d\'authentification requis' }, { status: 401 });
+    }
+
+    const token = authHeader.substring(7);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Token d\'authentification invalide' }, { status: 401 });
+    }
+
+    const userId = user.id;
 
     // Vérifier que l'utilisateur existe et a les permissions
-    const { data: user, error: userError } = await supabase
+    const { data: userProfile, error: userError } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single();
 
-    if (userError || !user) {
+    if (userError || !userProfile) {
       return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 });
     }
 
@@ -38,7 +55,52 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Module non trouvé' }, { status: 404 });
     }
 
-    // Générer un ID unique pour le token
+    // Vérifier s'il existe déjà un token valide pour ce module et cet utilisateur
+    const { data: existingToken, error: existingTokenError } = await supabase
+      .from('access_tokens')
+      .select('*')
+      .eq('module_id', moduleId)
+      .eq('created_by', userId)
+      .eq('is_active', true)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (existingToken && !existingTokenError) {
+      console.log('✅ Token existant trouvé, réutilisation');
+      
+      // Incrémenter le compteur d'utilisation
+      const newUsage = (existingToken.current_usage || 0) + 1;
+      const { error: updateError } = await supabase
+        .from('access_tokens')
+        .update({ 
+          current_usage: newUsage,
+          last_used_at: new Date().toISOString()
+        })
+        .eq('id', existingToken.id);
+
+      if (updateError) {
+        console.error('❌ Erreur mise à jour usage token:', updateError);
+      } else {
+        console.log(`✅ Usage token mis à jour: ${newUsage}/${existingToken.max_usage}`);
+      }
+      
+      // Utiliser l'URL personnalisée si fournie, sinon utiliser l'URL par défaut
+      const finalUrl = targetUrl || getModuleUrl(moduleTitle || module.title);
+      
+      return NextResponse.json({
+        success: true,
+        token: existingToken.jwt_token,
+        expiresAt: existingToken.expires_at,
+        accessUrl: `${finalUrl}?token=${existingToken.jwt_token}`,
+        reused: true,
+        currentUsage: newUsage,
+        maxUsage: existingToken.max_usage
+      });
+    }
+
+    // Générer un ID unique pour le nouveau token
     const tokenId = `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     // Calculer la date d'expiration
@@ -61,7 +123,7 @@ export async function POST(request: NextRequest) {
     // Créer le token dans la base de données
     const tokenData = {
       id: tokenId,
-      name: `Token ${module.title} - ${user.email}`,
+      name: `Token ${module.title} - ${userProfile.email}`,
       description: `Token généré automatiquement après paiement pour ${module.title}`,
       module_id: moduleId,
       module_name: module.title,
@@ -86,31 +148,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Erreur lors de la création du token' }, { status: 500 });
     }
 
-    // Optionnel : Enregistrer l'association paiement-token
-    const { error: paymentTokenError } = await supabase
-      .from('payment_tokens')
-      .insert([{
-        payment_id: paymentId,
-        token_id: tokenId,
-        user_id: userId,
-        module_id: moduleId,
-        created_at: new Date().toISOString()
-      }]);
+    // Créer l'accès module dans module_access (structure minimale)
+    try {
+      const { data: moduleAccess, error: moduleAccessError } = await supabase
+        .from('module_access')
+        .insert([{
+          user_id: userId,
+          module_id: moduleId,
+          access_type: paymentId ? 'purchase' : 'manual',
+          created_at: new Date().toISOString(),
+          expires_at: expiresAt.toISOString(),
+          is_active: true
+        }]);
 
-    if (paymentTokenError) {
-      console.error('Erreur association paiement-token:', paymentTokenError);
-      // Ne pas échouer si cette table n'existe pas encore
+      if (moduleAccessError) {
+        console.error('Erreur création accès module:', moduleAccessError);
+      } else {
+        console.log('✅ Accès module créé avec succès');
+      }
+    } catch (error) {
+      console.error('Erreur création accès module:', error);
     }
 
+    // Utiliser l'URL personnalisée si fournie, sinon utiliser l'URL par défaut
+    const finalUrl = targetUrl || getModuleUrl(moduleTitle || module.title);
+    
     return NextResponse.json({
       success: true,
-      token: {
-        id: newToken.id,
-        name: newToken.name,
-        jwtToken: newToken.jwt_token,
-        expiresAt: newToken.expires_at,
-        accessUrl: `${getModuleUrl(module.title)}?token=${newToken.jwt_token}`
-      }
+      token: newToken.jwt_token,
+      expiresAt: newToken.expires_at,
+      accessUrl: `${finalUrl}?token=${newToken.jwt_token}`
     });
 
   } catch (error) {
@@ -124,14 +191,15 @@ function getModuleUrl(moduleTitle: string): string {
   const moduleUrls: { [key: string]: string } = {
     'Stable Diffusion': 'https://stablediffusion.regispailler.fr',
     'IA Photo': 'https://iaphoto.regispailler.fr',
-    'MeTube': 'https://metube.regispailler.fr',
+    'MeTube': '/api/proxy-metube',
     'ChatGPT': 'https://chatgpt.regispailler.fr',
-    'LibreSpeed': 'https://librespeed.regispailler.fr',
+    'LibreSpeed': '/api/proxy-librespeed',
     'PsiTransfer': 'https://psitransfer.regispailler.fr',
     'PDF+': 'https://pdfplus.regispailler.fr',
     'AI Assistant': 'https://aiassistant.regispailler.fr',
     'CogStudio': 'https://cogstudio.regispailler.fr',
-    'RuinedFooocus': 'https://ruinedfooocus.regispailler.fr',
+    'ruinedfooocus': '/api/gradio-secure',
+    'RuinedFooocus': '/api/gradio-secure',
     'Invoke': 'https://invoke.regispailler.fr'
   };
 
