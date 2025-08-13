@@ -60,8 +60,12 @@ export async function POST(request: NextRequest) {
     console.log('🔍 Debug - Items:', items.map((item: any) => ({ title: item.title, price: item.price })));
 
     // Vérifier l'URL de l'application
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'; // URL relative pour les tests
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     console.log('🔍 Debug - URL de l\'application:', appUrl);
+    
+    // S'assurer que l'URL est valide pour Stripe
+    const baseUrl = appUrl.replace(/\/$/, ''); // Supprimer le slash final s'il existe
+    console.log('🔍 Debug - Base URL pour Stripe:', baseUrl);
 
     // Préparer les métadonnées limitées (max 500 caractères)
     const limitedItems = items.map((item: any) => ({
@@ -96,14 +100,16 @@ export async function POST(request: NextRequest) {
         quantity: 1,
       })),
       mode: type === 'subscription' ? 'subscription' : 'payment',
-      success_url: `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}&module=${encodeURIComponent(items[0]?.title || 'Module IA')}`,
-      cancel_url: `${appUrl}/cancel?canceled=true`,
+      success_url: `${baseUrl}/stripe-return?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/stripe-return?canceled=true`,
       customer_email: customerEmail,
       metadata: metadata,
     });
 
     console.log('🔍 Debug - Session créée:', session.id);
     console.log('🔍 Debug - URL session:', session.url);
+    console.log('🔍 Debug - Success URL:', `${baseUrl}/validation?success=true&session_id={CHECKOUT_SESSION_ID}`);
+    console.log('🔍 Debug - Cancel URL:', `${baseUrl}/validation?canceled=true`);
 
     return NextResponse.json({
       sessionId: session.id,

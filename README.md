@@ -1,50 +1,100 @@
-IAhome.fr — Monorepo Next.js avec API routes et déploiement Docker/Traefik.
+# IAHome - Plateforme d'Intelligence Artificielle
 
-## Démarrage local
+Une plateforme moderne pour accéder à des outils d'IA via une interface web élégante.
 
+## 🚀 Fonctionnalités
+
+- **Interface utilisateur moderne** et responsive
+- **Gestion des modules d'IA** avec système de tokens
+- **Système d'authentification** sécurisé
+- **Interface d'administration** complète
+- **Gestion des utilisateurs** et attribution de tokens
+- **Déploiement Docker** optimisé
+
+## 🛠️ Installation
+
+### Prérequis
+- Node.js 18+
+- Docker et Docker Compose
+- Base de données PostgreSQL (Supabase recommandé)
+
+### Démarrage rapide
 ```bash
-npm i
-npm run dev
+# Cloner le repository
+git clone <repository-url>
+cd iahome
+
+# Installer les dépendances
+npm install
+
+# Configurer les variables d'environnement
+cp env.example .env.local
+# Éditer .env.local avec vos configurations
+
+# Lancer avec Docker
+docker-compose -f docker-compose.prod.yml up -d --build
 ```
 
-- Application: `http://localhost:3000`
-- Fichier d'environnement local: `.env.local`
+## 📁 Structure du projet
 
-## Déploiement
+```
+iahome/
+├── src/                    # Code source Next.js
+│   ├── app/               # Pages et API routes
+│   ├── components/        # Composants React
+│   └── utils/            # Utilitaires
+├── scripts/              # Scripts SQL essentiels
+│   └── init-db.sql      # Initialisation de la base
+├── docker-compose.prod.yml # Configuration Docker production
+├── Dockerfile            # Image Docker
+└── README.md            # Ce fichier
+```
 
-- Production: `docker-compose.prod.yml` (Traefik + labels `iahome.fr`)
-- Pré-requis: `.env.production`, `Dockerfile`
+## 🔧 Configuration
 
-Commandes utiles:
+### Variables d'environnement
+- `NEXT_PUBLIC_SUPABASE_URL` - URL Supabase
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Clé anonyme Supabase
+- `JWT_SECRET` - Clé secrète JWT
+- `NEXT_PUBLIC_APP_URL` - URL de l'application
 
+### Base de données
+Exécutez `scripts/init-db.sql` pour initialiser la base de données.
+
+## 🐳 Déploiement
+
+### Production avec Docker
 ```bash
 docker-compose -f docker-compose.prod.yml up -d --build
-docker-compose -f docker-compose.prod.yml ps
-docker-compose -f docker-compose.prod.yml logs -f
 ```
 
-## Structure
+### Accès
+- **Application** : http://localhost:3000
+- **Dashboard Traefik** : http://localhost:8080
 
-- App/Routes Next.js: `src/app/**`
-- API: `src/app/api/**`
-- Scripts: `scripts/**`
+## 📝 Scripts disponibles
 
-## Licences + Registry privé (ex. ruinedfooocus)
+- `npm run dev` - Développement local
+- `npm run build` - Build de production
+- `npm run start` - Démarrage production
+- `npm run lint` - Vérification du code
 
-Endpoints:
-- `POST /api/licenses/issue` (admin): émet un JWT de licence pour un module
-- `POST /api/licenses/validate`: valide un token de licence pour un module
-- `POST /api/registry/creds`: retourne des credentials de lecture pour le registry privé
+## 🔒 Sécurité
 
-Script d’installation:
-- Bash: `scripts/install-ruinedfooocus.sh <LICENSE_TOKEN>`
-- PowerShell: `scripts/install-ruinedfooocus.ps1 -LicenseToken <LICENSE_TOKEN>`
+- Authentification Supabase
+- Gestion des tokens JWT
+- Validation des permissions
+- Interface admin sécurisée
 
-Variables d’environnement côté serveur:
-- `DOCKER_REGISTRY`, `DOCKER_REGISTRY_ROBOT_USER`, `DOCKER_REGISTRY_ROBOT_PASS`
+## 🧹 Nettoyage effectué
 
-## Nettoyage effectué
+- ✅ Suppression des fichiers de diagnostic et de test obsolètes
+- ✅ Suppression des scripts SQL temporaires et de vérification
+- ✅ Suppression des fichiers de configuration nginx obsolètes
+- ✅ Suppression des fichiers de migration et de déploiement obsolètes
+- ✅ Mise à jour du .gitignore pour exclure les fichiers temporaires
+- ✅ Conservation uniquement des fichiers essentiels
 
-- Suppression des endpoints/pages de test (`test-*`, `create-test-*`).
-- Suppression des compose et scripts obsolètes (metube, resume, oauth, proxy, simple, test).
-- Documentation alignée sur `iahome.fr`.
+## 📞 Support
+
+Pour toute question ou problème, consultez la documentation ou ouvrez une issue.

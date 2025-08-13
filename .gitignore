@@ -39,3 +39,32 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# logs
+/logs/
+*.log
+
+# backups
+/backups/
+
+# downloads and uploads
+/downloads/
+/uploads/
+/metube-downloads/
+/metube-config/
+
+# temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store

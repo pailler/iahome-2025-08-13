@@ -11,6 +11,8 @@ interface TokenConfig {
   description: string;
   moduleId: string;
   moduleName: string;
+  userId?: string;
+  userEmail?: string;
   accessLevel: 'basic' | 'premium' | 'admin';
   expirationHours: number;
   permissions: string[];
@@ -53,6 +55,8 @@ export default function TokenManagementPage() {
     description: '',
     moduleId: '',
     moduleName: '',
+    userId: '',
+    userEmail: '',
     accessLevel: 'premium',
     expirationHours: 72,
     permissions: ['read', 'access'],
@@ -210,21 +214,34 @@ export default function TokenManagementPage() {
         setTokens(mockTokens);
       } else {
         console.log('Tokens récupérés depuis la base de données:', tokensData);
-        const dbTokens = (tokensData || []).map((token: any) => ({
-          id: token.id?.toString(),
-          name: token.name || 'Token sans nom',
-          description: token.description || '',
-          moduleId: token.module_id?.toString() || '',
-          moduleName: token.module_name || token.modules?.title || 'Module inconnu',
-          accessLevel: token.access_level || 'premium',
-          expirationHours: token.expiration_hours || 72,
-          permissions: token.permissions || ['read', 'access'],
-          isActive: token.is_active !== false,
-          maxUsage: token.max_usage || 100,
-          currentUsage: token.current_usage || 0,
-          createdAt: token.created_at,
-          expiresAt: token.expires_at
-        }));
+        const dbTokens = (tokensData || []).map((token: any) => {
+          // Calculer la durée d'expiration en heures à partir de expires_at
+          let expirationHours = 72; // Valeur par défaut
+          if (token.expires_at && token.created_at) {
+            const expiresAt = new Date(token.expires_at);
+            const createdAt = new Date(token.created_at);
+            const diffMs = expiresAt.getTime() - createdAt.getTime();
+            expirationHours = Math.round(diffMs / (1000 * 60 * 60));
+          }
+          
+          return {
+            id: token.id?.toString(),
+            name: token.name || 'Token sans nom',
+            description: token.description || '',
+            moduleId: token.module_id?.toString() || '',
+            moduleName: token.module_name || token.modules?.title || 'Module inconnu',
+            userId: token.created_by || '',
+            userEmail: '', // Sera rempli plus tard si nécessaire
+            accessLevel: token.access_level || 'premium',
+            expirationHours: expirationHours,
+            permissions: token.permissions || ['read', 'access'],
+            isActive: token.is_active !== false,
+            maxUsage: token.max_usage || 100,
+            currentUsage: token.current_usage || 0,
+            createdAt: token.created_at,
+            expiresAt: token.expires_at
+          };
+        });
         setTokens(dbTokens);
       }
       
@@ -271,6 +288,13 @@ export default function TokenManagementPage() {
       
       console.log('Module sélectionné:', selectedModule);
       
+      // Vérifier que l'utilisateur existe
+      const selectedUser = users.find(u => u.id === formData.userId);
+      if (!selectedUser) {
+        alert('Veuillez sélectionner un utilisateur valide');
+        return;
+      }
+      
       // Calculer la date d'expiration
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + formData.expirationHours);
@@ -293,6 +317,7 @@ export default function TokenManagementPage() {
         description: formData.description,
         module_id: parseInt(formData.moduleId),
         module_name: selectedModule.title,
+        created_by: formData.userId,
         access_level: formData.accessLevel,
         permissions: formData.permissions,
         is_active: formData.isActive,
@@ -334,8 +359,10 @@ export default function TokenManagementPage() {
           description: insertedToken.description,
           moduleId: insertedToken.module_id?.toString() || '',
           moduleName: insertedToken.module_name || selectedModule.title,
+          userId: formData.userId,
+          userEmail: selectedUser.email,
           accessLevel: insertedToken.access_level,
-          expirationHours: formData.expirationHours,
+          expirationHours: formData.expirationHours, // Calculé à partir du frontend
           permissions: insertedToken.permissions || [],
           isActive: insertedToken.is_active,
           maxUsage: insertedToken.max_usage,
@@ -383,7 +410,7 @@ export default function TokenManagementPage() {
         return;
       }
       
-      const selectedModule = modules.find(m => m.id === formData.moduleId);
+      const selectedModule = modules.find(m => m.id === parseInt(formData.moduleId));
       
       if (!selectedModule) {
         alert('Veuillez sélectionner un module valide');
@@ -399,6 +426,7 @@ export default function TokenManagementPage() {
         description: formData.description,
         module_id: parseInt(formData.moduleId),
         module_name: selectedModule.title,
+        created_by: formData.userId,
         access_level: formData.accessLevel,
         permissions: formData.permissions,
         is_active: formData.isActive,
@@ -429,7 +457,7 @@ export default function TokenManagementPage() {
           moduleId: data.module_id?.toString() || '',
           moduleName: data.module_name || selectedModule.title,
           accessLevel: data.access_level,
-          expirationHours: formData.expirationHours,
+          expirationHours: formData.expirationHours, // Calculé à partir du frontend
           permissions: data.permissions || [],
           isActive: data.is_active,
           maxUsage: data.max_usage,
@@ -478,6 +506,8 @@ export default function TokenManagementPage() {
       description: token.description,
       moduleId: token.moduleId,
       moduleName: token.moduleName,
+      userId: token.userId || '',
+      userEmail: token.userEmail || '',
       accessLevel: token.accessLevel,
       expirationHours: token.expirationHours,
       permissions: [...token.permissions],
@@ -492,6 +522,8 @@ export default function TokenManagementPage() {
       description: '',
       moduleId: '',
       moduleName: '',
+      userId: '',
+      userEmail: '',
       accessLevel: 'premium',
       expirationHours: 72,
       permissions: ['read', 'access'],
@@ -510,7 +542,7 @@ export default function TokenManagementPage() {
   };
 
   const generateTokenPreview = () => {
-    const selectedModule = modules.find(m => m.id === formData.moduleId);
+    const selectedModule = modules.find(m => m.id === parseInt(formData.moduleId));
     return {
       moduleName: selectedModule?.title || formData.moduleName,
       accessLevel: formData.accessLevel,
@@ -647,6 +679,24 @@ export default function TokenManagementPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Utilisateur *
+                  </label>
+                  <select
+                    value={formData.userId}
+                    onChange={(e) => setFormData({...formData, userId: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Sélectionner un utilisateur ({users.length} utilisateurs disponibles)</option>
+                    {users.map(user => (
+                      <option key={user.id} value={user.id}>
+                        {user.email} ({user.role})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Niveau d'accès
                   </label>
                   <select
@@ -735,6 +785,7 @@ export default function TokenManagementPage() {
                 <h3 className="text-sm font-medium text-gray-700 mb-2">Aperçu du token</h3>
                 <div className="text-sm text-gray-600">
                   <p><strong>Module:</strong> {generateTokenPreview().moduleName}</p>
+                  <p><strong>Utilisateur:</strong> {formData.userEmail || formData.userId || 'Non sélectionné'}</p>
                   <p><strong>Niveau:</strong> {generateTokenPreview().accessLevel}</p>
                   <p><strong>Permissions:</strong> {generateTokenPreview().permissions.join(', ')}</p>
                   <p><strong>Expiration:</strong> {generateTokenPreview().expirationHours} heures</p>
@@ -757,7 +808,7 @@ export default function TokenManagementPage() {
               </button>
               <button
                 onClick={editingToken ? handleUpdateToken : handleCreateToken}
-                disabled={!formData.name || !formData.moduleId}
+                disabled={!formData.name || !formData.moduleId || !formData.userId}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {editingToken ? 'Mettre à jour' : 'Créer le token'}
@@ -838,6 +889,9 @@ export default function TokenManagementPage() {
                       Module
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Utilisateur
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Niveau
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -865,6 +919,9 @@ export default function TokenManagementPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {token.moduleName}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {token.userEmail || token.userId || 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${

@@ -337,24 +337,70 @@ function SelectionsContent() {
                 </div>
                 <div className="flex gap-3">
                   {session ? (
-                    <StripeCheckout
-                      items={modules}
-                      customerEmail={user?.email}
-                      onSuccess={() => {
-                        setPaymentStatus('success');
-                        localStorage.removeItem('selectedModules');
-                        setModules([]);
-                      }}
-                      onError={(error) => {
-                        alert(`Erreur de paiement: ${error}`);
-                      }}
-                    />
+                    <>
+                      <button
+                        className="flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                        onClick={async () => {
+                          try {
+                            // Activer tous les modules sélectionnés
+                            for (const module of modules) {
+                              const response = await fetch('/api/activate-module', {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                  moduleId: module.id,
+                                  userId: user.id,
+                                  moduleTitle: module.title,
+                                  moduleDescription: module.description,
+                                  moduleCategory: module.category,
+                                  moduleUrl: module.url
+                                }),
+                              });
+
+                              const result = await response.json();
+                              
+                              if (!result.success) {
+                                console.error('Erreur activation module:', module.title, result.error);
+                              } else {
+                                console.log('✅ Module activé:', module.title);
+                              }
+                            }
+
+                                                         // Nettoyer le localStorage et rediriger vers la page de validation
+                             localStorage.removeItem('selectedModules');
+                             setModules([]);
+                             router.push('/validation?success=true');
+                          } catch (error) {
+                            console.error('Erreur lors de l\'activation:', error);
+                            alert('Erreur lors de l\'activation des modules');
+                          }
+                        }}
+                      >
+                        🚀 Activer mes modules
+                      </button>
+                                            <StripeCheckout
+                        items={modules}
+                        customerEmail={user?.email}
+                        onSuccess={() => {
+                          setPaymentStatus('success');
+                          localStorage.removeItem('selectedModules');
+                          setModules([]);
+                          // Rediriger vers la page de validation après un paiement réussi
+                          router.push('/validation?success=true');
+                        }}
+                        onError={(error) => {
+                          alert(`Erreur de paiement: ${error}`);
+                        }}
+                      />
+                    </>
                   ) : (
                     <button
                       className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
                       onClick={() => router.push('/login')}
                     >
-                      Se connecter pour payer
+                      Se connecter pour activer
                     </button>
                   )}
                   <button

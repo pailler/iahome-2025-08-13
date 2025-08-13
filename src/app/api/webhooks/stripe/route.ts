@@ -131,7 +131,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
 
         // Vérifier si l'accès existe déjà
         const { data: existingAccess, error: checkError } = await supabase
-          .from('module_access')
+          .from('user_applications')
           .select('id')
           .eq('user_id', user.id)
           .eq('module_id', parseInt(moduleId))
@@ -143,21 +143,20 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
           continue;
         }
 
-        // Créer l'accès module dans module_access
+        // Créer l'accès module dans user_applications
+        const expiresAt = new Date();
+        expiresAt.setFullYear(expiresAt.getFullYear() + 1); // Expire dans 1 an
+
         const { data: accessData, error: accessError } = await supabase
-          .from('module_access')
+          .from('user_applications')
           .insert({
             user_id: user.id,
             module_id: parseInt(moduleId),
-            access_type: 'purchase',
-            expires_at: new Date(Date.now() + (72 * 60 * 60 * 1000)).toISOString(), // 72 heures
+            module_title: moduleData.title,
+            access_level: 'basic',
             is_active: true,
-            metadata: {
-              session_id: session.id,
-              purchased_at: new Date().toISOString(),
-              amount: amount,
-              payment_method: 'stripe'
-            }
+            expires_at: expiresAt.toISOString(),
+            created_at: new Date().toISOString()
           })
           .select()
           .single();
@@ -168,6 +167,33 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
         }
 
         console.log('✅ Accès module créé avec succès:', accessData.id);
+
+        // Créer aussi un token d'accès pour cet utilisateur
+        const { data: tokenData, error: tokenError } = await supabase
+          .from('access_tokens')
+          .insert({
+            name: `Token ${moduleData.title}`,
+            description: `Accès automatique à ${moduleData.title}`,
+            module_id: parseInt(moduleId),
+            module_name: moduleData.title,
+            created_by: user.id,
+            access_level: 'basic',
+            permissions: ['access'],
+            max_usage: 1000,
+            current_usage: 0,
+            is_active: true,
+            expires_at: expiresAt.toISOString(),
+            created_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (tokenError) {
+          console.error('❌ Erreur création token:', tokenError);
+          // On continue même si le token n'est pas créé
+        } else {
+          console.log('✅ Token d\'accès créé:', tokenData.id);
+        }
         
       } catch (error) {
         console.error('❌ Erreur lors de l\'ajout de l\'accès pour le module', moduleId, ':', error);

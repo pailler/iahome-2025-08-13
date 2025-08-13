@@ -35,9 +35,6 @@ export default function CardDetailPage() {
   const [user, setUser] = useState<any>(null);
   const [selectedCards, setSelectedCards] = useState<any[]>([]);
   const [userSubscriptions, setUserSubscriptions] = useState<{[key: string]: any}>({});
-  const [isSelected, setIsSelected] = useState(false);
-  const [isActivating, setIsActivating] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [iframeModal, setIframeModal] = useState<{isOpen: boolean, url: string, title: string}>({
     isOpen: false,
     url: '',
@@ -46,12 +43,28 @@ export default function CardDetailPage() {
 
   // Fonction pour accéder aux modules avec JWT
   const accessModuleWithJWT = async (moduleTitle: string, moduleId: string) => {
-    if (!session) {
-      alert('Vous devez être connecté pour accéder à ce module');
+    if (!session?.user?.id) {
+      alert('Vous devez être connecté pour accéder aux modules');
       return;
     }
 
     try {
+      // Gestion spéciale pour Metube avec lien direct
+      if (moduleTitle.toLowerCase().includes('metube') || moduleTitle.toLowerCase().includes('me tube')) {
+        console.log('🔑 Accès direct à Metube via iframe');
+        
+        // Utiliser directement l'URL de Metube dans l'iframe
+        const metubeUrl = 'https://metube.regispailler.fr';
+        console.log('🔗 URL d\'accès Metube directe:', metubeUrl);
+        
+        setIframeModal({
+          isOpen: true,
+          url: metubeUrl,
+          title: moduleTitle
+        });
+        return;
+      }
+
       // Gestion spéciale pour RuinedFooocus avec tokens Gradio
       if (moduleTitle.toLowerCase() === 'ruinedfooocus') {
         console.log('🔑 Génération du token Gradio pour RuinedFooocus');
@@ -165,8 +178,8 @@ export default function CardDetailPage() {
       const moduleUrls: { [key: string]: string } = {
         'stablediffusion': 'https://stablediffusion.regispailler.fr',
         'iaphoto': 'https://iaphoto.regispailler.fr', 
-        'metube': '/api/proxy-metube',
-        'ia metube': '/api/proxy-metube',
+        'metube': 'https://metube.regispailler.fr', // Mise à jour pour utiliser l'URL directe
+        'ia metube': 'https://metube.regispailler.fr', // Mise à jour pour utiliser l'URL directe
         'chatgpt': 'https://chatgpt.regispailler.fr',
         'librespeed': '/api/proxy-librespeed',
         'psitransfer': 'https://psitransfer.regispailler.fr',
@@ -190,7 +203,7 @@ export default function CardDetailPage() {
       }
       // Fallback par défaut si rien trouvé
       if (!baseUrl) {
-        baseUrl = '/api/proxy-metube';
+        baseUrl = 'https://metube.regispailler.fr'; // Mise à jour du fallback
       }
       // Pour les modules proxy internes, ne pas ajouter le token dans l'URL
       const isProxyModule = baseUrl.startsWith('/api/');
@@ -238,9 +251,25 @@ export default function CardDetailPage() {
 
       try {
         const { data: accessData, error: accessError } = await supabase
-          .from('module_access')
-          .select('id, created_at, access_type, expires_at, metadata, module_id')
-          .eq('user_id', session.user.id);
+          .from('access_modules')
+          .select(`
+            id, 
+            created_at, 
+            access_type, 
+            expires_at, 
+            module_id,
+            current_usage,
+            max_usage,
+            is_active,
+            modules (
+              id,
+              title,
+              price,
+              category
+            )
+          `)
+          .eq('user_id', session.user.id)
+          .eq('is_active', true);
 
         if (accessError) {
           console.error('❌ Erreur chargement accès:', accessError);
@@ -251,25 +280,23 @@ export default function CardDetailPage() {
         
         for (const access of accessData || []) {
           try {
-            const { data: moduleData, error: moduleError } = await supabase
-              .from('modules')
-              .select('id, title, price, category')
-              .eq('id', access.module_id)
-              .single();
-
-            if (moduleError) {
-              console.error(`❌ Erreur chargement module ${access.module_id}:`, moduleError);
-              continue;
-            }
-
-            if (moduleData) {
-              subscriptions[moduleData.title] = {
-                ...moduleData,
-                access: access
+            // Utiliser les données du module déjà jointes
+            if (access.modules && access.modules.length > 0) {
+              subscriptions[access.modules[0].title] = {
+                ...access.modules[0],
+                access: {
+                  id: access.id,
+                  created_at: access.created_at,
+                  access_type: access.access_type,
+                  expires_at: access.expires_at,
+                  current_usage: access.current_usage,
+                  max_usage: access.max_usage,
+                  is_active: access.is_active
+                }
               };
             }
           } catch (error) {
-            console.error(`❌ Exception chargement module ${access.module_id}:`, error);
+            console.error(`❌ Exception traitement module ${access.module_id}:`, error);
             continue;
           }
         }
@@ -349,71 +376,6 @@ export default function CardDetailPage() {
 
   const isCardSelected = (cardId: string) => {
     return selectedCards.some(card => card.id === cardId);
-  };
-
-  const handleChoose = () => {
-    setIsSelected(true);
-  };
-
-  const handleActivate = async () => {
-    if (!user?.email) {
-      alert('Veuillez vous connecter pour activer ce module');
-      return;
-    }
-
-    if (!card) {
-      alert('Module non trouvé');
-      return;
-    }
-
-    setIsActivating(true);
-    setIsProcessing(true);
-
-    try {
-      // Créer l'intention de paiement
-      const response = await fetch('/api/create-payment-intent', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          items: [{
-            id: card.id,
-            title: card.title,
-            description: card.description,
-            price: typeof card.price === 'string' ? parseFloat(card.price) : card.price
-          }],
-          customerEmail: user.email,
-          type: 'payment'
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Erreur lors de la création du paiement');
-      }
-
-      const { url: sessionUrl } = await response.json();
-
-      // Rediriger vers Stripe Checkout
-      if (sessionUrl) {
-        window.location.href = sessionUrl;
-      } else {
-        throw new Error('URL de session Stripe manquante');
-      }
-
-    } catch (error) {
-      console.error('Erreur lors de l\'activation:', error);
-      alert('Erreur lors de l\'activation du module. Veuillez réessayer.');
-    } finally {
-      setIsActivating(false);
-      setIsProcessing(false);
-    }
-  };
-
-  const handleCancel = () => {
-    setIsSelected(false);
-    setIsActivating(false);
-    setIsProcessing(false);
   };
 
   if (loading) {
@@ -602,59 +564,203 @@ export default function CardDetailPage() {
                     // Boutons pour les modules payants
                     <div className="space-y-4">
                       {!['PSitransfer', 'PDF+', 'Librespeed'].includes(card.title) && (
+                        <button 
+                          className={`w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 ${
+                            isCardSelected(card.id)
+                              ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white'
+                              : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white'
+                          }`}
+                          onClick={() => handleSubscribe(card)}
+                        >
+                          <span className="text-xl">🔐</span>
+                          <span>{isCardSelected(card.id) ? 'Sélectionné' : 'Choisir'}</span>
+                        </button>
+                      )}
+                      
+                                             {/* Bouton "Activer la sélection" pour les modules payants */}
+                       {isCardSelected(card.id) && card.price !== 0 && card.price !== '0' && (
+                        <button 
+                          className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                          onClick={async () => {
+                            if (!session) {
+                              window.location.href = '/login';
+                              return;
+                            }
+
+                            try {
+                              const response = await fetch('/api/create-payment-intent', {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                  items: [card],
+                                  customerEmail: user?.email,
+                                  type: 'payment',
+                                }),
+                              });
+
+                              if (!response.ok) {
+                                throw new Error(`Erreur HTTP ${response.status}`);
+                              }
+
+                              const { url, error } = await response.json();
+
+                              if (error) {
+                                throw new Error(`Erreur API: ${error}`);
+                              }
+
+                              if (url) {
+                                window.location.href = url;
+                              } else {
+                                throw new Error('URL de session Stripe manquante.');
+                              }
+                            } catch (error) {
+                              console.error('Erreur lors de l\'activation:', error);
+                              alert(`Erreur lors de l'activation: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+                            }
+                          }}
+                        >
+                          <span className="text-xl">⚡</span>
+                          <span>Activer {card.title}</span>
+                        </button>
+                      )}
+
+                      {/* Bouton JWT - visible seulement si l'utilisateur a accès au module */}
+                      {session && userSubscriptions[card.title] && (
                         <>
-                          {!isSelected ? (
-                            <button 
-                              className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-                              onClick={handleChoose}
+                          {card.title.toLowerCase() === 'ruinedfooocus' ? (
+                            <button
+                              onClick={async () => {
+                                console.log('🔑 Accès RuinedFooocus via système de tokens');
+                                
+                                try {
+                                  // Utiliser le système de tokens existant mais avec l'URL RuinedFooocus
+                                  const response = await fetch('/api/generate-module-token', {
+                                    method: 'POST',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                      'Authorization': `Bearer ${session?.access_token}`
+                                    },
+                                    body: JSON.stringify({
+                                      moduleId: card.id,
+                                      moduleTitle: card.title,
+                                      targetUrl: 'https://ruinedfooocus.regispailler.fr'
+                                    }),
+                                  });
+                                  
+                                  if (!response.ok) {
+                                    const errorData = await response.json();
+                                    throw new Error(errorData.error || `Erreur HTTP ${response.status}`);
+                                  }
+                                  
+                                  const { token, expiresAt, accessUrl } = await response.json();
+                                  console.log('✅ Token généré avec succès pour RuinedFooocus');
+                                  
+                                  // Ouvrir dans une iframe sécurisée
+                                  setIframeModal({
+                                    isOpen: true,
+                                    url: accessUrl,
+                                    title: 'RuinedFooocus'
+                                  });
+                                  
+                                } catch (error) {
+                                  console.error('❌ Erreur lors de la génération du token:', error);
+                                  alert(`Erreur lors de l'accès: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+                                }
+                              }}
+                              className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                              title={`Accéder à ${card.title} avec authentification`}
                             >
-                              <span className="text-xl">🔐</span>
-                              <span>Choisir</span>
+                              <span className="text-xl">🔑</span>
+                              <span>Accéder à {card.title}</span>
                             </button>
                           ) : (
-                            <div className="space-y-3">
-                              <button 
-                                className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-                                onClick={handleActivate}
-                                disabled={isProcessing}
-                              >
-                                {isProcessing ? (
-                                  <span className="text-xl animate-spin">⏳</span>
-                                ) : (
-                                  <span className="text-xl">⚡</span>
-                                )}
-                                <span>
-                                  {isProcessing ? 'Traitement...' : `Activer ${card.title}`}
-                                </span>
-                              </button>
-                              
-                              <button 
-                                className="w-full font-semibold py-3 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gray-100 hover:bg-gray-200 text-gray-700 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-                                onClick={handleCancel}
-                                disabled={isProcessing}
-                              >
-                                <span>Annuler</span>
-                              </button>
-                            </div>
+                            <button 
+                              className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                              onClick={async () => {
+                                // Pour tous les modules, utiliser la fonction générique
+                                await accessModuleWithJWT(card.title, card.id);
+                              }}
+                            >
+                              <span className="text-xl">🔑</span>
+                              <span>Accéder à {card.title}</span>
+                            </button>
                           )}
+                          
+                                                     {/* Lien direct vers Gradio pour RuinedFooocus */}
+                           {card.title.toLowerCase() === 'ruinedfooocus' && (
+                             <>
+                               <a 
+                                 href="https://da4be546aab3e23055.gradio.live/"
+                                 target="_blank"
+                                 rel="noopener noreferrer"
+                                 className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                                 title="Accéder directement à l'application RuinedFooocus sur Gradio"
+                               >
+                                 <span className="text-xl">🚀</span>
+                                 <span>Accès direct Gradio</span>
+                               </a>
+                               
+                               {/* Bouton d'accès local pour RuinedFooocus */}
+                               <button 
+                                 className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                                 onClick={async () => {
+                                   if (!session) {
+                                     alert('Connectez-vous pour accéder à cette ressource locale');
+                                     return;
+                                   }
+                                   
+                                   console.log('🔑 Accès local RuinedFooocus demandé (module payant)');
+                                   
+                                   try {
+                                     const response = await fetch('/api/generate-local-token', {
+                                       method: 'POST',
+                                       headers: {
+                                         'Content-Type': 'application/json',
+                                         'Authorization': `Bearer ${session?.access_token}`
+                                       },
+                                       body: JSON.stringify({
+                                         targetUrl: 'http://192.168.1.150:7870',
+                                         moduleTitle: 'RuinedFooocus Local',
+                                         moduleId: card.id
+                                       }),
+                                     });
+                                     
+                                     if (!response.ok) {
+                                       const errorData = await response.json();
+                                       throw new Error(errorData.error || `Erreur HTTP ${response.status}`);
+                                     }
+                                     
+                                     const { token: localToken } = await response.json();
+                                     console.log('✅ Token local généré avec succès');
+                                     
+                                     // Construire l'URL sécurisée avec le token
+                                     const secureUrl = `/api/local-proxy?token=${localToken}`;
+                                     console.log('🔗 URL d\'accès local sécurisée:', secureUrl);
+                                     
+                                     setIframeModal({
+                                       isOpen: true,
+                                       url: secureUrl,
+                                       title: 'RuinedFooocus Local'
+                                     });
+                                   } catch (error) {
+                                     console.error('❌ Erreur lors de l\'accès local:', error);
+                                     alert(`Erreur lors de l'accès local: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+                                   }
+                                 }}
+                                 title="Accéder à l'application RuinedFooocus locale (192.168.1.150:7870)"
+                               >
+                                 <span className="text-xl">🏠</span>
+                                 <span>Accès Local (192.168.1.150)</span>
+                               </button>
+                             </>
+                           )}
                         </>
                       )}
 
                       {/* Bouton dupliqué supprimé - le bouton est déjà dans la section des modules gratuits */}
                     </div>
-                  )}
-
-                  {/* Bouton d'accès - visible seulement si l'utilisateur a déjà payé pour le module */}
-                  {session && userSubscriptions[card.title] && (
-                    <button 
-                      className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-                      onClick={async () => {
-                        await accessModuleWithJWT(card.title, card.id);
-                      }}
-                    >
-                      <span className="text-xl">🔑</span>
-                      <span>Accéder à {card.title}</span>
-                    </button>
                   )}
 
                   {!session && (
