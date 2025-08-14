@@ -28,15 +28,33 @@ export default function ModuleCard({ module, userEmail }: ModuleCardProps) {
     }).format(price);
   };
 
-  // Image par défaut unique pour tous les modules
-  const defaultImage = 'https://picsum.photos/400/225?random=1';
+  // Fonction pour obtenir l'image appropriée selon le module
+  const getModuleImage = (title: string, imageUrl?: string) => {
+    if (imageUrl) return imageUrl;
+    
+    const titleLower = title.toLowerCase();
+    
+    // Utiliser l'icône PDF SVG pour les modules PDF
+    if (titleLower.includes('pdf') || titleLower.includes('pdf+')) {
+      return '/images/pdf-icon.svg';
+    }
+    
+    // Image par défaut pour les autres modules
+    return 'https://picsum.photos/400/225?random=1';
+  };
 
-  // Utiliser l'image du module si disponible, sinon l'image par défaut
-  const imageUrl = module.image_url || defaultImage;
+  // Utiliser l'image appropriée pour le module
+  const imageUrl = getModuleImage(module.title, module.image_url);
 
   const handleImageError = () => {
     setImageError(true);
   };
+
+  // Déterminer le style du prix
+  const isFree = module.price === 0;
+  const priceStyle = isFree 
+    ? "bg-green-100 text-green-800 border-green-200" 
+    : "bg-blue-100 text-blue-800 border-blue-200";
 
   return (
     <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100">
@@ -65,7 +83,7 @@ export default function ModuleCard({ module, userEmail }: ModuleCardProps) {
           // Fallback avec l'image par défaut
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-200">
             <img 
-              src={defaultImage}
+              src="https://picsum.photos/400/225?random=1"
               alt="Image par défaut"
               className="w-full h-full object-cover"
             />
@@ -78,7 +96,7 @@ export default function ModuleCard({ module, userEmail }: ModuleCardProps) {
           </span>
         </div>
         <div className="absolute top-3 right-3">
-          <span className="bg-blue-100 text-blue-800 text-sm font-semibold px-3 py-1 rounded-full">
+          <span className={`${priceStyle} text-sm font-bold px-3 py-1 rounded-full border`}>
             {formatPrice(module.price)}
           </span>
         </div>

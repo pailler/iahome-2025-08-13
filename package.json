@@ -1,34 +1,27 @@
 {
     "version": "0.1.0",
-    "name": "iahome",
     "scripts": {
-        "dev": "next dev -p 3000",
-        "build": "next build",
-        "start": "next start",
         "lint": "next lint",
-        "docker:build": "docker build -t iahome .",
-        "docker:run": "docker run -p 3000:3000 --env-file .env.production iahome",
-        "deploy": "chmod +x scripts/deploy.sh && ./scripts/deploy.sh",
-        "health": "curl -f http://localhost:3000/api/health"
-    },
-    "devDependencies": {
-        "@tailwindcss/postcss": "^4",
-        "@types/jsonwebtoken": "^9.0.10",
-        "@types/node": "^20",
-        "@types/react": "^19",
-        "@types/react-dom": "^19",
-        "eslint": "^9",
-        "eslint-config-next": "15.4.4",
-        "tailwindcss": "^4",
-        "typescript": "^5"
+        "build": "next build",
+        "dev": "next dev -p 3000",
+        "start": "next start"
     },
     "dependencies": {
         "@supabase/supabase-js": "^2.52.1",
-        "jsonwebtoken": "^9.0.2",
+        "@tailwindcss/postcss": "^4.1.12",
+        "autoprefixer": "^10.4.21",
         "next": "15.4.4",
+        "postcss": "^8.5.6",
         "react": "19.1.0",
         "react-dom": "19.1.0",
-        "stripe": "^18.3.0"
+        "tailwindcss": "^4.1.12"
     },
-    "private": true
+    "name": "iahome",
+    "private": true,
+    "devDependencies": {
+        "@types/node": "^20",
+        "@types/react": "^19",
+        "@types/react-dom": "^19",
+        "typescript": "^5"
+    }
 }
